@@ -16,7 +16,10 @@ ARG _GID=1000
 ARG _USERNAME=builder
 ENV HOME=/home/${_USERNAME}
 
-RUN --mount=type=cache,target=/var/cache/apt,sharing=locked --mount=type=cache,target=/var/lib/apt,sharing=locked <<EOF
+WORKDIR /tmp/build
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt,sharing=locked \
+    --mount=type=tmpfs,target=/tmp/build <<EOF
     set -eux -o pipefail
     ln -snf "/usr/share/zoneinfo/${TZ}" /etc/localtime
     echo "${TZ}" > /etc/timezone
@@ -39,6 +42,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked --mount=type=cache,t
         libmpfr-dev \
         libusb-1.0-0-dev \
         lsb-release \
+        markdownlint \
         ninja-build \
         openjdk-21-jdk-headless \
         openjdk-21-jre-headless \
@@ -49,11 +53,13 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked --mount=type=cache,t
         python3-setuptools \
         python3-venv \
         shfmt \
+        shellcheck \
         srecord \
         sudo \
         tzdata \
         unzip \
         xxd \
+        yapf3 \
         zip
     update-ca-certificates
     # Install clang-19 and configure
@@ -70,12 +76,28 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked --mount=type=cache,t
     ln -s /usr/bin/clang-tidy-19 /usr/bin/clang-tidy
     ln -s /usr/bin/ld.lld-19 /usr/bin/ld.lld
     ln -s /usr/bin/llvm-symbolizer-19 /usr/bin/llvm-symbolizer
-    # end clang-19
+    # Install Bazel
     curl -fsSL https://bazel.build/bazel-release.pub.gpg | gpg --dearmor > /tmp/bazel-archive-keyring.gpg
     mv /tmp/bazel-archive-keyring.gpg /usr/share/keyrings/
     echo "deb [arch=$(dpkg-architecture -q DEB_HOST_ARCH) signed-by=/usr/share/keyrings/bazel-archive-keyring.gpg] https://storage.googleapis.com/bazel-apt stable jdk1.8" | sudo tee /etc/apt/sources.list.d/bazel.list
     apt-get update
     apt-get install bazel bazel-8.6.0 bazel-9.1.0
+    # Install buildifier
+    curl -fL -o buildifier https://github.com/bazelbuild/buildtools/releases/download/v7.3.1/buildifier-linux-amd64
+    echo "5474cc5128a74e806783d54081f581662c4be8ae65022f557e9281ed5dc88009  buildifier" | sha256sum --check -
+    install buildifier /usr/local/bin
+    # Install verible-verilog-lint
+    curl -fL -o verible.tar.gz https://github.com/chipsalliance/verible/releases/download/v0.0-4051-g9fdb4057/verible-v0.0-4051-g9fdb4057-linux-static-x86_64.tar.gz
+    echo "f52e5920ef63f70620a6086e09dea8bd778147cd7a9ff827bb7de5d6316b1754  verible.tar.gz" | sha256sum --check -
+    mkdir -p verible
+    tar -xf verible.tar.gz --strip-components=1 -C verible
+    install verible/bin/verible-verilog-* /usr/local/bin
+    # Install scalafmt
+    curl -fL -o scalafmt.zip https://github.com/scalameta/scalafmt/releases/download/v3.10.7/scalafmt-x86_64-pc-linux.zip
+    echo "a238a4e73141538a2a2e4e834f80154906b8a3f654ff14b6752fc3a3feeb5be1  scalafmt.zip" | sha256sum --check -
+    unzip scalafmt.zip
+    install scalafmt /usr/local/bin
+    # Set up builder user
     echo "${_USERNAME} ALL=(ALL) NOPASSWD:/usr/bin/apt-get" >> /etc/sudoers.d/${_USERNAME}
     echo "${_USERNAME} ALL=(ALL) NOPASSWD:/usr/bin/apt" >> /etc/sudoers.d/${_USERNAME}
     echo "${_USERNAME} ALL=(ALL) NOPASSWD:/bin/mkdir" >> /etc/sudoers.d/${_USERNAME}
