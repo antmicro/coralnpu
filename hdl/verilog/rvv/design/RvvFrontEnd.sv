@@ -129,7 +129,7 @@ module RvvFrontEnd#(parameter N = 4,
 
   always_ff @(posedge clk) begin
     for (int i = 0; i < N; i++) begin
-      inst_q[i] <= inst_data_i[i];
+      inst_q[i] <= inst_accepted[i] ? inst_data_i[i] : inst_q[i];
     end
   end
 
