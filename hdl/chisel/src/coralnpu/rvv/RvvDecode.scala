@@ -239,6 +239,8 @@ class RvvS1DecodeInstructionBase {
       Valid(new RvvS1DecodedInstruction),
       _.valid -> op.valid,
       _.bits.op -> op.bits,
+      _.bits.is_float -> false.B,
+      _.bits.is_widening -> false.B,
     ))
   }
 
@@ -297,6 +299,8 @@ class RvvS1DecodeInstructionBase {
       Valid(new RvvS1DecodedInstruction),
       _.valid -> op.valid,
       _.bits.op -> op.bits,
+      _.bits.is_float -> false.B,
+      _.bits.is_widening -> false.B,
     ))
   }
 
@@ -359,6 +363,41 @@ class RvvS1DecodeInstructionBase {
       Valid(new RvvS1DecodedInstruction),
       _.valid -> op.valid,
       _.bits.op -> op.bits,
+      _.bits.is_float -> false.B,
+      _.bits.is_widening -> false.B,
+    ))
+  }
+
+  private def s1decode_opfvv(f6vm: UInt, vs2: UInt, vs1: UInt, vd: UInt): Valid[RvvS1DecodedInstruction] = {
+    val op = MuxUpTo1H(MakeInvalid(RvvAluOp()), Seq(
+      (f6vm === "b010010".U && vs1 === "b01101".U) -> MakeValid(RvvAluOp.VFWCVTBF16),
+      (f6vm === "b010010".U && vs1 === "b11101".U) -> MakeValid(RvvAluOp.VFNCVTBF16),
+      (f6vm === "b111011".U) -> MakeValid(RvvAluOp.VFWMACCBF16),
+    ))
+
+    val is_widening = (f6vm === "b010010".U || f6vm === "b111011".U) && (vs1 =/= "b11101".U)
+
+    ForceZero(MakeWireBundle[ValidIO[RvvS1DecodedInstruction]](
+      Valid(new RvvS1DecodedInstruction),
+      _.valid -> op.valid,
+      _.bits.op -> op.bits,
+      _.bits.is_float -> true.B,
+      _.bits.is_widening -> is_widening,
+    ))
+  }
+
+  private def s1decode_opfvf(f6vm: UInt, vs2: UInt, rs1: UInt, vd: UInt): Valid[RvvS1DecodedInstruction] = {
+    val op = MuxUpTo1H(MakeInvalid(RvvAluOp()), Seq(
+      (f6vm === "b010010".U && rs1 === "b01101".U) -> MakeValid(RvvAluOp.VFWCVTBF16),
+      (f6vm === "b111011".U) -> MakeValid(RvvAluOp.VFWMACCBF16),
+    ))
+
+    ForceZero(MakeWireBundle[ValidIO[RvvS1DecodedInstruction]](
+      Valid(new RvvS1DecodedInstruction),
+      _.valid -> op.valid,
+      _.bits.op -> op.bits,
+      _.bits.is_float -> true.B,
+      _.bits.is_widening -> true.B,
     ))
   }
 
@@ -369,12 +408,14 @@ class RvvS1DecodeInstructionBase {
     val vs1 = bits(12, 8)  // Or rs1, or imm5, where applicable.
     val vs2 = bits(17, 13)  // Does not apply to 2 of the 3 config ops.
     val f6vm = bits(24, 18)  // Does not apply to config ops.
-    // TODO: 24:13 for config ops
+    val funct6 = bits(24, 19)
 
     MuxLookup(mode, invalid())(Seq(
       "b000".U -> s1decode_opivv(f6vm, vs2, vs1, vd),
+      "b001".U -> s1decode_opfvv(funct6, vs2, vs1, vd),
       "b011".U -> s1decode_opivi(f6vm, vs2, vs1, vd),
       "b100".U -> s1decode_opivx(f6vm, vs2, vs1, vd),
+      "b101".U -> s1decode_opfvf(funct6, vs2, vs1, vd),
     ))
   }
 }

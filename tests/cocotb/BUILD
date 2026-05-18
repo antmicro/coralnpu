@@ -44,6 +44,7 @@ COCOTB_TEST_BINARY_TARGETS = glob(["**/*.elf"]) + glob(["**/*.o"]) + [
     ":wfi_slot_2.elf",
     ":wfi_slot_3.elf",
     ":zfbfmin_test.elf",
+    ":zvfbf_test.elf",
     "//tests/cocotb/coralnpu_isa:coralnpu_isa_tests",
     "//tests/cocotb/exceptions:elf_files",
     "//third_party/riscv-tests:all_files",
@@ -768,6 +769,45 @@ cocotb_test_suite(
         ],
         "size": "medium",
     },
+    verilator_model = ":rvv_core_mini_axi_model",
+)
+
+coralnpu_v2_binary(
+    name = "zvfbf_test",
+    srcs = [
+        "zvfbf_test.cc",
+    ],
+)
+
+cocotb_test_suite(
+    name = "zvfbf_cocotb_test",
+    simulators = [
+        "verilator",
+        "vcs",
+    ],
+    testcases = [
+        "zvfbf_test",
+    ],
+    testcases_vname = "ZVFBF_TESTCASES",
+    tests_kwargs = {
+        "hdl_toplevel": "RvvCoreMiniAxi",
+        "waves": False,
+        "seed": "42",
+        "test_module": ["zvfbf_test.py"],
+        "deps": [
+            "//coralnpu_test_utils:sim_test_fixture",
+            "@bazel_tools//tools/python/runfiles",
+        ],
+        "data": [
+            ":zvfbf_test.elf",
+        ],
+        "size": "medium",
+    },
+    vcs_build_args = VCS_BUILD_ARGS,
+    vcs_data = [":zvfbf_test.elf"] + VCS_COMMON_DATA,
+    vcs_defines = VCS_DEFINES,
+    vcs_test_args = VCS_TEST_ARGS,
+    vcs_verilog_sources = ["//hdl/chisel/src/coralnpu:rvv_core_mini_axi_cc_library_verilog"],
     verilator_model = ":rvv_core_mini_axi_model",
 )
 

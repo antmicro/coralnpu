@@ -21,8 +21,8 @@ load(
     "chisel_test",
 )
 load("@coralnpu_hw//rules:lint.bzl", "vcstatic_lint")
-load("@coralnpu_hw//rules:verilog.bzl", "verilog_zip_bundle")
 load("@coralnpu_hw//rules:utils.bzl", "template_rule")
+load("@coralnpu_hw//rules:verilog.bzl", "verilog_zip_bundle")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -421,13 +421,13 @@ chisel_library(
         "Sram.scala",
         "SramNx128.scala",
     ],
-    deps = [
-        ":coralnpu_base",
-        "//hdl/chisel/src/bus",
-    ],
     resource_strip_prefix = "hdl/verilog",
     resources = [
         "//hdl/verilog:Sram.v",
+    ],
+    deps = [
+        ":coralnpu_base",
+        "//hdl/chisel/src/bus",
     ],
 )
 
@@ -617,7 +617,6 @@ chisel_cc_library(
     vopts = CORE_MINI_AXI_VOPTS,
 )
 
-
 CORE_MINI_AXI_BLACKBOX_DESIGNS = [
     "CKLNQD10BWP6T20P96CPDLVT",
     "TS1N12FFCLLMBLVTD2048X128M4SWBSHO",
@@ -667,6 +666,7 @@ RVV_CORE_MINI_AXI_COMMON_GEN_FLAGS = [
     "--enableRvv=True",
     "--enableFloat=True",
     "--enableZfbfmin=True",
+    "--enableVectorBf16=True",
     "--useAxi",
 ]
 

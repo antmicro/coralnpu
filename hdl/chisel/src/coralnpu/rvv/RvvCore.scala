@@ -391,6 +391,37 @@ object GenerateCoreShimSource {
   }
 }
 
+object GenerateBackendConfig {
+  def apply(p: Parameters): String = {
+    var config = """`ifndef RVV_CONFIG_SVH
+        |`define RVV_CONFIG_SVH
+        |
+        |// config for multi-dispatch
+        |`define DISPATCH3
+        |//`define DISPATCH2
+        |
+        |// FP ISA
+        |//`define ZVE32F_ON
+        |""".stripMargin
+    if (p.enableVectorBf16) {
+      config += "`define ZVFBFWMA_ON\n"
+    } else {
+      config += "//`define ZVFBFWMA_ON\n"
+    }
+    config += """
+        |// LSU interaction
+        |// Disable until scalar side supports NOHANDSHAKE
+        |// `define UNMK_USCS_LOAD_NOHANDSHAKE
+        |
+        |// ARBITER
+        |`define ARBITER_ON
+        |
+        |`endif // RVV_CONFIG_SVH
+        |""".stripMargin
+    config
+  }
+}
+
 // Shim class for RVVCore, which invokes the RVV SV interface with the correct
 // parameters.
 class RvvCoreWrapper(p: Parameters) extends BlackBox with HasBlackBoxInline
@@ -450,6 +481,7 @@ class RvvCoreWrapper(p: Parameters) extends BlackBox with HasBlackBoxInline
   dontTouch(io.rd_rob2rt_o)
 
   // Resources must be sorted topologically by dependency DAG
+  setInline("rvv_backend_config.svh", GenerateBackendConfig(p))
   addResource("hdl/verilog/rvv/inc/rvv_backend_define.svh")
   addResource("hdl/verilog/rvv/inc/rvv_backend_opcode.svh")
   addResource("hdl/verilog/rvv/inc/rvv_backend.svh")
