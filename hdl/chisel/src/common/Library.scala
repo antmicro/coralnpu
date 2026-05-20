@@ -200,7 +200,7 @@ class LoopingCounter(w: Width) extends Bundle {
   val curr = UInt(w)
   val max  = UInt(w) // Reachable.
 
-  def isEnabled(): Bool = (max === 0.U)
+  def isEnabled(): Bool = (max =/= 0.U)
 
   def isFull(): Bool = (curr === max)
 

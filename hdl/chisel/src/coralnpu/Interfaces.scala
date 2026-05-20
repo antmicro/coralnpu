@@ -126,6 +126,28 @@ class DBusIO(p: Parameters, bank: Boolean = false) extends Bundle {
   val rdata = Input(UInt(p.lsuDataBits.W))
 }
 
+// TODO: add txid
+class DBus2Resp(p: Parameters) extends Bundle {
+  val rdata = UInt(p.lsuDataBits.W)
+  val fault = Bool()
+}
+
+// TODO: add txid
+class DBus2IO(p: Parameters, bank: Boolean = false) extends Bundle {
+  // Control Phase.
+  val ctrl = Decoupled(new Bundle {
+    val write = Bool()
+    val pc    = UInt(32.W)
+    val addr  = UInt((p.lsuAddrBits - (if (bank) 1 else 0)).W)
+    val adrx  = UInt((p.lsuAddrBits - (if (bank) 1 else 0)).W)
+    val size  = UInt(p.dbusSize.W)
+    val wdata = UInt(p.lsuDataBits.W)
+    val wmask = UInt(p.lsuDataBytes.W)
+  })
+  // Response Phase
+  val resp = Flipped(Decoupled(new DBus2Resp(p)))
+}
+
 class EBusIO(p: Parameters) extends Bundle {
   val dbus     = new DBusIO(p)
   val internal = Output(Bool())

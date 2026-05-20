@@ -764,7 +764,7 @@ module rvv_backend
         .T            (LSU_MAP_INFO_t),
         .M            (`NUM_DP_UOP),
         .N            (`NUM_LSU),
-        .DEPTH        (`LSU_RS_DEPTH),
+        .DEPTH        (`LSUMAP_DEPTH),
         .ASYNC_RSTN   (1'b1),
         .CHAOS_PUSH   (1'b1)
     ) u_lsu_map_info (

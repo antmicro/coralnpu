@@ -62,6 +62,12 @@ template_rule(
         "load16_segment2_stride6_m1": {
             "srcs": ["load16_segment2_stride6_m1.cc"],
         },
+        "load8_stride0_m1": {
+            "srcs": ["load8_stride0_m1.cc"],
+        },
+        "load8_stride0strict_m1": {
+            "srcs": ["load8_stride0strict_m1.cc"],
+        },
         "load8_stride2_m1": {
             "srcs": ["load8_stride2_m1.cc"],
         },
@@ -70,6 +76,9 @@ template_rule(
         },
         "load8_stride2_mf4": {
             "srcs": ["load8_stride2_mf4.cc"],
+        },
+        "load_store8_fault": {
+            "srcs": ["load_store8_fault.cc"],
         },
         "load_store8_test": {
             "srcs": ["load_store8_test.cc"],
@@ -206,11 +215,14 @@ filegroup(
         ":load8_index8_seg.elf",
         ":load8_seg_unit.elf",
         ":load8_segment2_stride6_m1.elf",
+        ":load8_stride0_m1.elf",
+        ":load8_stride0strict_m1.elf",
         ":load8_stride2_m1.elf",
         ":load8_stride2_m1_partial.elf",
         ":load8_stride2_mf4.elf",
         ":load_store16_unit_m2.elf",
         ":load_store32_unit_m2.elf",
+        ":load_store8_fault.elf",
         ":load_store8_test.elf",
         ":load_store8_unit_m2.elf",
         ":load_store_bits.elf",

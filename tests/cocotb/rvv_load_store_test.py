@@ -611,6 +611,30 @@ async def store_unit_masked(dut):
 
 
 @cocotb.test()
+async def load8_stride0_m1(dut):
+    await vector_load_store(
+        dut=dut,
+        elf_name='load8_stride0_m1.elf',
+        dtype=np.uint8,
+        in_size=32,
+        out_size=16,
+        pattern=[0] * 16,
+    )
+
+
+@cocotb.test()
+async def load8_stride0strict_m1(dut):
+    await vector_load_store(
+        dut=dut,
+        elf_name='load8_stride0strict_m1.elf',
+        dtype=np.uint8,
+        in_size=32,
+        out_size=16,
+        pattern=[0] * 16,
+    )
+
+
+@cocotb.test()
 async def load8_stride2_m1(dut):
     await vector_load_store(
         dut=dut,
@@ -3011,6 +3035,41 @@ async def store32_seg_unit(dut):
         ],
         dtype=np.uint32,
     )
+
+
+# TODO: rename to m4
+@cocotb.test()
+async def load_store8_fault(dut):
+    """Testbench to test RVV load fault."""
+    fixture = await Fixture.Create(dut)
+    r = runfiles.Create()
+    await fixture.load_elf_and_lookup_symbols(
+        r.Rlocation(
+            'coralnpu_hw/tests/cocotb/rvv/load_store/load_store8_fault.elf'
+        ),
+        ['buffer', 'in_ptr', 'out_ptr', 'vl', 'fault_count'],
+    )
+
+    vl = 64
+    input_data = np.random.randint(0, 255, vl, dtype=np.uint8)
+    target_in_addr = fixture.symbols['buffer']
+    target_out_addr = fixture.symbols['buffer'] + 64
+
+    await fixture.core_mini_axi.write(target_in_addr, input_data)
+    await fixture.write('in_ptr', np.array([target_in_addr], dtype=np.uint32))
+    await fixture.write(
+        'out_ptr', np.array([target_out_addr], dtype=np.uint32)
+    )
+    await fixture.write('vl', np.array([vl], dtype=np.uint32))
+
+    await fixture.run_to_halt()
+
+    fault_count = (await fixture.read_word('fault_count')).view(np.int32)[0]
+    assert (fault_count == 1)
+    routputs = (await fixture.core_mini_axi.read(target_out_addr,
+                                                 vl)).view(np.uint8)
+    # TODO(davidgao): when we flush the LSU RS on fault, add this assertion
+    # assert (input_data != routputs).any()
 
 
 @cocotb.test()

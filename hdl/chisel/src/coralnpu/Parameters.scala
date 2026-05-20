@@ -97,6 +97,8 @@ class Parameters(var m: Seq[MemoryRegion] = Seq(), val hartId: Int = 0, val xlen
   var enableRvv     = false
   val rvvVlen       = 128
   def rvvVlenb: Int = { rvvVlen / 8 }
+  // indexing a single byte within one vector register
+  def rvvByteIndexWidth: Int = log2Ceil(rvvVlenb)
 
   def useRetirementBuffer: Boolean = { enableVerification }
 
@@ -143,7 +145,11 @@ class Parameters(var m: Seq[MemoryRegion] = Seq(), val hartId: Int = 0, val xlen
   var lsuDataBits         = 256
   def lsuDataBytes: Int   = { lsuDataBits / 8 }
   val lsuDelayPipelineLen = 1
-  def dbusSize: Int       = { log2Ceil(lsuDataBits / 8) + 1 }
+  // When increasing bus width, this can be limited to improve timing.
+  val lsuStrictWindowBytes = lsuDataBytes
+  def dbusSize             = log2Ceil(lsuDataBytes + 1)
+  def dbusOffsetBits       = log2Ceil(lsuDataBytes)
+  def dbusRowAddrBits      = lsuAddrBits - dbusOffsetBits
 
   // TCM Size Configuration
   var itcmSizeKBytes = Parameters.itcmSizeKBytesDefault

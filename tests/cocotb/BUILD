@@ -105,7 +105,7 @@ CORE_MINI_AXI_SIM_TESTCASES = [
     ("core_mini_axi_basic_write_read_memory", "large"),
     "core_mini_axi_run_wfi_in_all_slots",
     "core_mini_axi_slow_bready",
-    "core_mini_axi_write_read_memory_stress_test",
+    ("core_mini_axi_write_read_memory_stress_test", "large"),
     "core_mini_axi_master_write_alignment",
     "core_mini_axi_finish_txn_before_halt_test",
     "core_mini_axi_riscv_tests",
@@ -254,13 +254,15 @@ RVV_LOAD_STORE_TESTCASES = [
     "load8_index32",
     ("load8_index32_seg", "large"),
     "load8_seg_unit",
+    "load8_stride0_m1",
+    "load8_stride0strict_m1",
     "load8_stride2_m1",
     "load8_stride2_m1_partial",
     "load8_stride2_mf4",
     "load16_index8",
     "load16_index8_seg",
-    "load16_index16_seg",
-    "load16_index32_seg",
+    ("load16_index16_seg", "large"),
+    ("load16_index32_seg", "large"),
     "load16_seg_unit",
     "load16_stride4_m1",
     "load16_stride4_m1_partial",
@@ -293,6 +295,9 @@ RVV_LOAD_STORE_TESTCASES = [
     "store8_seg_unit",
     "store16_seg_unit",
     "store32_seg_unit",
+    # This freezes the core on LSUv2. LSUv3 fixes this.
+    # TODO: enable this.
+    # "load_store8_fault",
     "load_store8_test",
 ]
 # END_TESTCASES_FOR_rvv_load_store_test

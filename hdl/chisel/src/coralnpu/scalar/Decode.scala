@@ -737,7 +737,7 @@ class DispatchV2(p: Parameters) extends Dispatch(p) {
     if (p.enableRvv) {
       io.lsu(i).bits.elemWidth.get := io.inst(i).bits.inst(14, 12)
       io.lsu(i).bits.nfields.get   := io.inst(i).bits.inst(31, 29)
-      io.lsu(i).bits.umop.get      := io.inst(i).bits.inst(24, 20)
+      io.lsu(i).bits.bit24To20.get := io.inst(i).bits.inst(24, 20)
     }
 
     // -------------------------------------------------------------------------
