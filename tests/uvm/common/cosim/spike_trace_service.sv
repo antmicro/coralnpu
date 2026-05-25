@@ -71,12 +71,12 @@ class spike_trace_service extends uvm_object;
      int i = 0;
      string res;
      // Skip whitespace
-     while (s.len() > 0 && (s.substr(0,0) == " " || s.substr(0,0) == "\t" || s.substr(0,0) == "\n" || s.substr(0,0) == "\r")) s = s.substr(1);
+     while (s.len() > 0 && (s.substr(0,0) == " " || s.substr(0,0) == "\t" || s.substr(0,0) == "\n" || s.substr(0,0) == "\r")) s = s.substr(1, s.len()-1);
      if (s.len() == 0) return "";
      // Find end of token
      while (i < s.len() && s.substr(i,i) != " " && s.substr(i,i) != "\t" && s.substr(i,i) != "\n" && s.substr(i,i) != "\r") i++;
      res = s.substr(0, i-1);
-     s = s.substr(i);
+     s = s.substr(i, s.len()-1);
      return res;
   endfunction
 
@@ -112,7 +112,7 @@ class spike_trace_service extends uvm_object;
        end
     end
     if (pos == -1) return 0;
-    remainder = line.substr(pos + 1);
+    remainder = line.substr(pos + 1, line.len()-1);
 
     while (remainder.len() > 0) begin
        token = pop_token(remainder);
@@ -120,7 +120,7 @@ class spike_trace_service extends uvm_object;
 
        if (token.len() >= 2 && (token.substr(0,0) == "x" || token.substr(0,0) == "f" || token.substr(0,0) == "v")) begin
           string reg_type = token.substr(0,0);
-          string idx_str = token.substr(1);
+          string idx_str = token.substr(1, token.len()-1);
           int reg_idx;
           string val_str;
           bit is_numeric = 1;
