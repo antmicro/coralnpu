@@ -71,6 +71,121 @@ package coralnpu_cosim_checker_pkg;
 
     spike_cosim_checker spike_checker;
     bit mismatch_detected = 0;
+    bit [31:0] dirty_gprs = 0;
+    bit dirty_stack[int];
+
+    // Function: is_varying_csr_read
+    // Checks if the instruction is a CSR read of varying counters (mcycle, cycle, time)
+    function bit is_varying_csr_read(logic [31:0] insn);
+      logic [6:0]  opcode = insn[6:0];
+      logic [2:0]  funct3 = insn[14:12];
+      logic [11:0] csr    = insn[31:20];
+      logic [4:0]  rd     = insn[11:7];
+
+      if (opcode == 7'b1110011) begin // SYSTEM opcode
+        if (funct3 != 3'b000) begin
+          if (rd != 0 && (csr == 12'hB00 || csr == 12'hB80 || // mcycle / mcycleh
+                          csr == 12'hC00 || csr == 12'hC80 || // cycle / cycleh
+                          csr == 12'hC01 || csr == 12'hC81)) begin // time / timeh
+            return 1;
+          end
+        end
+      end
+      return 0;
+    endfunction
+
+    // Function: update_dirty_registers
+    // Tracks the lifetime of registers loaded with varying CSR values
+    function bit [31:0] update_dirty_registers(retired_instr_info_s rtl_info, input int unsigned pre_step_sp);
+      logic [6:0]  opcode = rtl_info.insn[6:0];
+      logic [2:0]  funct3 = rtl_info.insn[14:12];
+      logic [11:0] csr    = rtl_info.insn[31:20];
+      logic [4:0]  rd     = rtl_info.insn[11:7];
+      logic [4:0]  rs1    = rtl_info.insn[19:15];
+      logic [4:0]  rs2    = rtl_info.insn[24:20];
+
+      bit reads_rs1 = 0;
+      bit reads_rs2 = 0;
+      bit is_varying_read = 0;
+      bit consumes_dirty = 0;
+      bit [31:0] skip_mask = 0;
+
+      // 1. Detect varying CSR read
+      is_varying_read = is_varying_csr_read(rtl_info.insn);
+
+      // 2. Decode GPR reads
+      case (opcode)
+        7'b0110011: begin reads_rs1 = 1; reads_rs2 = 1; end // OP
+        7'b0010011: begin reads_rs1 = 1; end                // OP-IMM
+        7'b0000011: begin reads_rs1 = 1; end                // LOAD
+        7'b0100011: begin reads_rs1 = 1; reads_rs2 = 1; end // STORE
+        7'b1100011: begin reads_rs1 = 1; reads_rs2 = 1; end // BRANCH
+
+
+      endcase
+
+      // 3. Propagate GPR-to-GPR dirtiness
+      if (reads_rs1 && rs1 != 0 && dirty_gprs[rs1]) consumes_dirty = 1;
+      if (reads_rs2 && rs2 != 0 && dirty_gprs[rs2]) consumes_dirty = 1;
+
+      // 3.5. Trace stack reloads (byte-granular)
+      if (opcode == 7'b0000011 && rs1 == 2) begin // LOAD sp-relative (LB, LH, LW, LBU, LHU)
+        int offset = $signed(rtl_info.insn[31:20]);
+        int size = (funct3 == 3'b000 || funct3 == 3'b100) ? 1 : // Byte
+                   (funct3 == 3'b001 || funct3 == 3'b101) ? 2 : // Halfword
+                   (funct3 == 3'b010) ? 4 : 0;                  // Word
+        begin
+          int addr = pre_step_sp + offset;
+          for (int i = 0; i < size; i++) begin
+            if (dirty_stack.exists(addr + i) && dirty_stack[addr + i] == 1) begin
+              consumes_dirty = 1;
+              `uvm_info("COSIM_STACK_RELOAD", $sformatf("Stack address 0x%h (sp+0x%h, size=%0d) is DIRTY, GPR[x%0d] marked DIRTY at PC 0x%h",
+                         addr + i, offset + i, size, rd, rtl_info.pc), UVM_LOW)
+              break;
+            end
+          end
+        end
+      end
+
+      // 4. Update GPR dirty mask and skip mask for current instruction
+      if (rtl_info.x_wb != 0) begin
+        if (rd != 0) begin
+          if (is_varying_read || consumes_dirty) begin
+            skip_mask[rd] = 1;
+            dirty_gprs[rd] = 1;
+            `uvm_info("COSIM_DIRTY", $sformatf("GPR[x%0d] marked DIRTY at PC 0x%h (varying=%b, consumes=%b)",
+                       rd, rtl_info.pc, is_varying_read, consumes_dirty), UVM_LOW)
+          end else begin
+            dirty_gprs[rd] = 0; // Overwritten with clean value
+          end
+        end
+      end
+
+      // 4.5. Trace stack spills (byte-granular, uses updated dirty state)
+      if (opcode == 7'b0100011 && rs1 == 2) begin // STORE sp-relative (SB, SH, SW)
+        int offset = $signed({rtl_info.insn[31:25], rtl_info.insn[11:7]});
+        int size = (funct3 == 3'b000) ? 1 : // Byte
+                   (funct3 == 3'b001) ? 2 : // Halfword
+                   (funct3 == 3'b010) ? 4 : 0; // Word
+        begin
+          int addr = pre_step_sp + offset;
+          if (rs2 != 0 && dirty_gprs[rs2]) begin
+            for (int i = 0; i < size; i++) begin
+              dirty_stack[addr + i] = 1;
+            end
+            `uvm_info("COSIM_STACK_SPILL", $sformatf("Stack address 0x%h (sp+0x%h, size=%0d) marked DIRTY (spilled GPR[x%0d]) at PC 0x%h",
+                       addr, offset, size, rs2, rtl_info.pc), UVM_LOW)
+          end else begin
+            for (int i = 0; i < size; i++) begin
+              dirty_stack.delete(addr + i);
+            end
+          end
+        end
+      end
+
+      return skip_mask;
+    endfunction
+
 
     // Constructor
     function new(string name = "coralnpu_cosim_checker",
@@ -136,6 +251,8 @@ package coralnpu_cosim_checker_pkg;
       int unsigned mpact_pc;
       int match_index = -1;
       logic [31:0] rtl_instr;
+      bit [31:0] skip_mask;
+      int unsigned pre_step_sp;
 
       if (mpact_get_register("pc", mpact_pc) != 0) begin
         `uvm_error("COSIM_API_FAIL", "Failed to get PC from MPACT simulator.")
@@ -166,18 +283,24 @@ package coralnpu_cosim_checker_pkg;
                 $sformatf("PC match (0x%h). Stepping MPACT with 0x%h",
                           mpact_pc, rtl_instr), UVM_HIGH)
 
+      if (mpact_get_register("sp", pre_step_sp) != 0) begin
+        `uvm_error("COSIM_API_FAIL", "Failed to get pre-step SP from MPACT.")
+      end
+
       if (mpact_step(rtl_instr) != 0) begin
         `uvm_error("COSIM_STEP_FAIL", "mpact_step() DPI call failed.")
         mismatch_detected = 1;
         return;
       end
 
+      skip_mask = update_dirty_registers(retired_instr_q[match_index], pre_step_sp);
+
       if (spike_checker != null) begin
-        spike_checker.check_instruction(retired_instr_q[match_index], rvvi_vif);
+        spike_checker.check_instruction(retired_instr_q[match_index], rvvi_vif, skip_mask);
       end
 
       // Check return status and terminate on failure
-      if (!step_and_compare(retired_instr_q[match_index])) begin
+      if (!step_and_compare(retired_instr_q[match_index], skip_mask)) begin
         mismatch_detected = 1;
         return;
       end
@@ -223,6 +346,8 @@ package coralnpu_cosim_checker_pkg;
 
         // Reset state
         mismatch_detected = 0;
+        dirty_gprs = 0;
+        dirty_stack.delete();
         retired_instr_q.delete();
         uvm_config_db#(bit)::set(null, "*", "cosim_mismatch_detected", 0);
 
@@ -283,7 +408,7 @@ package coralnpu_cosim_checker_pkg;
     // 2. FPR (floating-point) writes: Checks the f_wb mask and compares the written data.
     // 3. VPR (vector) writes: Checks the v_wb bitmask and compares each written vector register.
     // Returns 1 if all checks pass, 0 otherwise.
-    virtual function bit step_and_compare(retired_instr_info_s rtl_info);
+    virtual function bit step_and_compare(retired_instr_info_s rtl_info, input bit [31:0] skip_mask);
       int unsigned mpact_gpr_val;
       int unsigned rd_index;
       logic [31:0] rtl_wdata;
@@ -307,6 +432,11 @@ package coralnpu_cosim_checker_pkg;
       else if (rtl_info.x_wb != 0) begin
         rd_index = $clog2(rtl_info.x_wb);
         reg_name = $sformatf("x%0d", rd_index);
+        if (skip_mask[rd_index]) begin
+          `uvm_info("COSIM_SKIP", $sformatf("Skipping GPR[%s] comparison at PC 0x%h due to dirty mask", reg_name, rtl_info.pc), UVM_LOW)
+          return 1; // PASS (skipped)
+        end
+
         if (mpact_get_register(reg_name, mpact_gpr_val) != 0) begin
           `uvm_error("COSIM_API_FAIL",
             $sformatf("Failed to get GPR '%s'", reg_name));

@@ -46,7 +46,8 @@ class spike_cosim_checker extends uvm_object;
   // Synchronizes the Spike log to the retired RTL instruction and verifies
   // that all register writes reported by Spike match the RTL state.
   function void check_instruction(retired_instr_info_s rtl_info,
-                                  virtual rvviTrace #(.ILEN(32), .XLEN(32), .FLEN(32), .VLEN(128), .NHART(1), .RETIRE(8)) rvvi_vif);
+                                  virtual rvviTrace #(.ILEN(32), .XLEN(32), .FLEN(32), .VLEN(128), .NHART(1), .RETIRE(8)) rvvi_vif,
+                                  input bit [31:0] skip_mask);
     if (!spike_enabled) return;
 
     current_spike_txns.delete();
@@ -103,7 +104,10 @@ class spike_cosim_checker extends uvm_object;
     foreach(current_spike_txns[k]) begin
         // 1. GPR Verification
         if (current_spike_txns[k].has_gpr_write && current_spike_txns[k].rd != 0) begin
-           if (!rtl_info.x_wb[current_spike_txns[k].rd]) begin
+           if (skip_mask[current_spike_txns[k].rd]) begin
+              `uvm_info("SPIKE_SKIP", $sformatf("Skipping GPR[x%0d] verification at PC 0x%h due to dirty mask",
+                         current_spike_txns[k].rd, rtl_info.pc), UVM_LOW)
+           end else if (!rtl_info.x_wb[current_spike_txns[k].rd]) begin
               `uvm_fatal("SPIKE_GPR_MISMATCH", $sformatf("GPR[x%0d] mismatch at PC 0x%h. Spike wrote 0x%h but RTL did not.",
                          current_spike_txns[k].rd, rtl_info.pc, current_spike_txns[k].wdata))
            end else begin
@@ -149,6 +153,7 @@ class spike_cosim_checker extends uvm_object;
     for (int r = 1; r < 32; r++) begin
         if (rtl_info.x_wb[r]) begin
            bit found = 0;
+           if (skip_mask[r]) continue;
            foreach(current_spike_txns[k]) if (current_spike_txns[k].has_gpr_write && current_spike_txns[k].rd == r) found = 1;
            if (!found) `uvm_fatal("SPIKE_GPR_MISMATCH", $sformatf("RTL wrote GPR[x%0d] at PC 0x%h but Spike did not.", r, rtl_info.pc))
         end

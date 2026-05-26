@@ -579,6 +579,14 @@ coralnpu_v2_binary(
     ],
 )
 
+coralnpu_v2_binary(
+    name = "mcycle_test",
+    srcs = [
+        "mcycle_test.cc",
+    ],
+)
+
+
 # This test is used for baseline vector power analysis.
 coralnpu_v2_binary(
     name = "nop_test",
