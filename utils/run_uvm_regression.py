@@ -304,10 +304,12 @@ def generate_spike_log(spike_bin: str,
 def run_uvm(elf_path: str,
             spike_log_path: Optional[str] = None,
             target: Optional[str] = None,
-            mpact_root: str = "/tmp/copybara-mpact",
+            mpact_root: Optional[str] = None,
             tohost_addr: Optional[int] = None) -> Tuple[str, str, str]:
 
     logging.info(f"Running UVM for {elf_path}...")
+    if not mpact_root:
+        mpact_root = resolve_default_mpact_root()
     if not os.path.exists(elf_path):
         # We don't want to deal too much with handling exceptions in
         # the run loop that calls this. We'll just log in the CSV and let
@@ -486,11 +488,39 @@ def checkout_git_commit(repo_root: str, commit: str):
         sys.exit(1)
 
 
+def resolve_default_mpact_root() -> str:
+    # 1. Check if env var is already set
+    if "CORALNPU_MPACT" in os.environ:
+        return os.environ["CORALNPU_MPACT"]
+
+    # 2. If not set, dynamically resolve using Bazel
+    try:
+        logging.info("Dynamically resolving default @coralnpu_mpact path via Bazel...")
+        # Force Bazel to fetch the repository if needed
+        bazel_cache = os.environ.get("BAZEL_CACHE")
+        fetch_cmd = ["bazel", "build"]
+        if bazel_cache:
+            fetch_cmd.append(f"--repository_cache={bazel_cache}")
+        fetch_cmd.extend(["@coralnpu_mpact//:coralnpu_sim_users"])
+
+        # Run the build to force fetch
+        subprocess.check_output(fetch_cmd, stderr=subprocess.DEVNULL)
+
+        # Query bazel info output_base to get the dynamic cache location
+        output_base = subprocess.check_output(["bazel", "info", "output_base"]).decode("utf-8").strip()
+        resolved_path = os.path.join(output_base, "external", "coralnpu_mpact")
+        logging.info(f"Resolved default @coralnpu_mpact path: {resolved_path}")
+        return resolved_path
+    except Exception as e:
+        logging.critical(f"Failed to dynamically resolve @coralnpu_mpact path via Bazel: {e}.")
+        sys.exit(1)
+
+
 def get_mpact_configs(args) -> Tuple[str, Optional[str]]:
     if args.mpact_root:
         mpact_root = os.path.abspath(args.mpact_root)
     else:
-        mpact_root = os.environ.get("CORALNPU_MPACT", "/tmp/copybara-mpact")
+        mpact_root = resolve_default_mpact_root()
 
     mpact_riscv_root = None
     if args.mpact_riscv_root:

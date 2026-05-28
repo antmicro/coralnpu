@@ -14,9 +14,12 @@
 
 # Makefile for CoralNPU UVM Testbench (Integrates with MPACT-Sim)
 
-# Check if CORALNPU_MPACT is set. If not, exit with an error.
+# If CORALNPU_MPACT is not set, dynamically resolve it from Bazel's http_archive cache
 ifndef CORALNPU_MPACT
-    $(error CORALNPU_MPACT is not set. Please define it, e.g., export CORALNPU_MPACT=$(abspath ../../../coralnpu-mpact))
+    BAZEL_CACHE_ARG = $(if $(BAZEL_CACHE),--repository_cache=$(BAZEL_CACHE),)
+    _FETCH := $(shell bazel build $(BAZEL_CACHE_ARG) @coralnpu_mpact//:coralnpu_sim_users > /dev/null 2>&1)
+    BAZEL_OUTPUT_BASE = $(shell bazel info output_base)
+    CORALNPU_MPACT = $(BAZEL_OUTPUT_BASE)/external/coralnpu_mpact
 endif
 
 # Generated RTL path

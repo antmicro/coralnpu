@@ -328,4 +328,6 @@ def mpact_repos():
         urls = ["https://github.com/google-coral/coralnpu-mpact/archive/a1d219efd49a36b8744af29df23ab06dd6c021c6.zip"],
         sha256 = "23cf70ac2ca31f9c56fc140959298524d5db2f003fe4fdfe3552081048cbf934",
         strip_prefix = "coralnpu-mpact-a1d219efd49a36b8744af29df23ab06dd6c021c6",
+        workspace_file = "@coralnpu_hw//third_party/coralnpu_mpact:WORKSPACE",
     )
+
