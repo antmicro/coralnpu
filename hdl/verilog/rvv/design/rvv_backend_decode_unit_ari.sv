@@ -3515,7 +3515,7 @@ module rvv_backend_decode_unit_ari
   // check vstart < vl
   always_comb begin
     check_vl_not_0      = csr_vl!='b0;
-    check_vstart_sle_vl = evstart < csr_vl;
+    check_vstart_sle_vl = {1'b0, csr_vstart} < csr_vl;
     
     // Instructions that write an x register or f register do so even when vstart >= vl, including when vl=0.
     case(inst_funct3) 
