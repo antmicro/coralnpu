@@ -322,7 +322,7 @@ endgenerate
       if(rob2rt_write_data[j].w_type==VRF) begin
         for(int i=0;i<`VLENB;i++) begin
           rt2rvvi_data[j].vd_type                             = {`VLENB{BODY_ACTIVE}};
-          rt2rvvi_data[j].w_data[i*`BYTE_WIDTH+:`BYTE_WIDTH]  = vrfres_strobe[i] 
+          rt2rvvi_data[j].w_data[i*`BYTE_WIDTH+:`BYTE_WIDTH]  = vrfres_strobe[j][i] 
                                                                 ? vrfres[j][i*`BYTE_WIDTH+:`BYTE_WIDTH] 
                                                                 : vrf_data[rob2rt_write_data[j].w_index][i*`BYTE_WIDTH+:`BYTE_WIDTH];
         end

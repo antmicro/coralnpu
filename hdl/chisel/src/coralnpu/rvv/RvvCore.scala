@@ -450,14 +450,14 @@ class RvvCoreWrapper(p: Parameters) extends BlackBox with HasBlackBoxInline
   dontTouch(io.rd_rob2rt_o)
 
   // Resources must be sorted topologically by dependency DAG
-  addResource("hdl/verilog/rvv/inc/rvv_backend_config.svh")
   addResource("hdl/verilog/rvv/inc/rvv_backend_define.svh")
+  addResource("hdl/verilog/rvv/inc/rvv_backend_opcode.svh")
   addResource("hdl/verilog/rvv/inc/rvv_backend.svh")
+  addResource("hdl/verilog/rvv/inc/rvv_backend_falu.svh")
   addResource("hdl/verilog/rvv/inc/rvv_backend_sva.svh")
   addResource("hdl/verilog/rvv/inc/rvv_backend_alu.svh")
   addResource("hdl/verilog/rvv/inc/rvv_backend_dispatch.svh")
   addResource("hdl/verilog/rvv/inc/rvv_backend_div.svh")
-  addResource("hdl/verilog/rvv/inc/rvv_backend_fma.svh")
   addResource("hdl/verilog/rvv/inc/rvv_backend_pmtrdt.svh")
   addResource("hdl/verilog/rvv/common/adder.sv") // New
   addResource("hdl/verilog/rvv/common/arb_round_robin.sv") // New
@@ -465,12 +465,13 @@ class RvvCoreWrapper(p: Parameters) extends BlackBox with HasBlackBoxInline
   addResource("hdl/verilog/rvv/common/handshake_ff.sv")  // New
   addResource("hdl/verilog/rvv/common/handshake_multi_fifo.sv")  // New
   addResource("hdl/verilog/rvv/common/cdffr.sv")
-  addResource("hdl/verilog/rvv/common/compressor_3_2.sv")
-  addResource("hdl/verilog/rvv/common/compressor_4_2.sv")
+  addResource("hdl/verilog/rvv/common/compressor_3to2.sv")
+  addResource("hdl/verilog/rvv/common/compressor_4to2.sv")
   addResource("hdl/verilog/rvv/common/dff.sv")
   addResource("hdl/verilog/rvv/common/edff.sv")
   addResource("hdl/verilog/rvv/common/edff_2d.sv")
   addResource("hdl/verilog/rvv/common/multi_fifo.sv")
+  addResource("hdl/verilog/rvv/common/intdivider.sv")
 
   // FPnew
   addResource("external/common_cells/include/common_cells/registers.svh")
@@ -551,13 +552,11 @@ class RvvCoreWrapper(p: Parameters) extends BlackBox with HasBlackBoxInline
   addResource("hdl/verilog/rvv/design/rvv_backend_dispatch_raw_uop_uop.sv")
   addResource("hdl/verilog/rvv/design/rvv_backend_dispatch_structure_hazard.sv")
   addResource("hdl/verilog/rvv/design/rvv_backend_dispatch.sv")
-  addResource("hdl/verilog/rvv/design/rvv_backend_div_unit_divider.sv")
+  addResource("hdl/verilog/rvv/design/rvv_backend_fdiv_unit.sv")
   addResource("hdl/verilog/rvv/design/rvv_backend_div_unit.sv")
   addResource("hdl/verilog/rvv/design/rvv_backend_fdiv_wrapper.sv")  // New
   addResource("hdl/verilog/rvv/design/rvv_backend_div.sv")
   addResource("hdl/verilog/rvv/design/rvv_backend_sqrt7_rec7.sv")  // New
-  addResource("hdl/verilog/rvv/design/rvv_backend_fma_wrapper.sv")  // New
-  addResource("hdl/verilog/rvv/design/rvv_backend_fma.sv")  // New
   addResource("hdl/verilog/rvv/design/rvv_backend_lsu_remap.sv")
   addResource("hdl/verilog/rvv/design/rvv_backend_mul_unit_mul8.sv")
   addResource("hdl/verilog/rvv/design/rvv_backend_mac_unit.sv")
@@ -574,6 +573,8 @@ class RvvCoreWrapper(p: Parameters) extends BlackBox with HasBlackBoxInline
   addResource("hdl/verilog/rvv/design/rvv_backend_rob.sv")
   addResource("hdl/verilog/rvv/design/rvv_backend_vrf_reg.sv")
   addResource("hdl/verilog/rvv/design/rvv_backend_vrf.sv")
+  addResource("hdl/verilog/rvv/design/rvv_backend_falu_unit.sv")
+  addResource("hdl/verilog/rvv/design/rvv_backend_falu.sv")
   addResource("hdl/verilog/rvv/design/rvv_backend.sv")
   addResource("hdl/verilog/rvv/design/RvvCore.sv")
   setInline("RvvCoreWrapper.sv", GenerateCoreShimSource(p.instructionLanes, p.rvvVlen))

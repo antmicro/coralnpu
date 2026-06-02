@@ -47,14 +47,12 @@ exports_files(
         "rvv_backend_dispatch_raw_uop_uop.sv",
         "rvv_backend_dispatch_structure_hazard.sv",
         "rvv_backend_div.sv",
-        "rvv_backend_div_unit_divider.sv",
         "rvv_backend_div_unit.sv",
-
+        "rvv_backend_fdiv_unit.sv",
         "rvv_backend_fdiv_wrapper.sv",  # New
-
+        "rvv_backend_falu.sv",
+        "rvv_backend_falu_unit.sv",
         "rvv_backend_sqrt7_rec7.sv",  # New
-        "rvv_backend_fma_wrapper.sv",  # New
-        "rvv_backend_fma.sv",  # New
 
 
 

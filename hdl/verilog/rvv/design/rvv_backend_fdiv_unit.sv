@@ -1,5 +1,9 @@
+`ifndef HDL_VERILOG_RVV_DESIGN_RVV_SVH
 `include "rvv_backend.svh"
+`endif
+`ifndef DIV_DEFINE_SVH
 `include "rvv_backend_div.svh"
+`endif
 
 module rvv_backend_fdiv_unit(
   clk,

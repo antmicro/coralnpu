@@ -1,6 +1,10 @@
 
+`ifndef HDL_VERILOG_RVV_DESIGN_RVV_SVH
 `include "rvv_backend.svh"
+`endif
+`ifndef FMA_DEFINE_SVH
 `include "rvv_backend_falu.svh"
+`endif
 
 // description
 //to FMA

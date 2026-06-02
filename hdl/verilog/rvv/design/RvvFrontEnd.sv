@@ -339,6 +339,7 @@ module RvvFrontEnd#(parameter N = 4,
 `endif  // ZVE32F_ON
       config_state_q.sew <= SEW8;
       config_state_q.lmul <= LMUL1;
+      config_state_q.lmul_orig <= LMUL1;
     end else begin
       // Update config state next cycle
       config_state_q <= inst_config_state[N];

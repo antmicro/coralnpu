@@ -1,4 +1,6 @@
+`ifndef HDL_VERILOG_RVV_DESIGN_RVV_SVH
 `include "rvv_backend.svh"
+`endif
 
 // description
 // this module decode floating point instruction to sub uop unit
