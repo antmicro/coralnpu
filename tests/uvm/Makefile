@@ -65,7 +65,7 @@ PLUSARGS = +UVM_TESTNAME=$(UVM_TESTNAME) \
            +MISA_VALUE=$(MISA_VALUE)
 
 # Waveform Dumping
-DUMP_WAVES = 1
+DUMP_WAVES_FSDB = 1
 WAVE_FILE = $(WAVE_DIR)/$(UVM_TESTNAME).fsdb
 
 # VCS Options
@@ -94,8 +94,8 @@ VCS_RUN_OPTS = \
 	$(EXTRA_PLUSARGS)
 
 # Add define to COMPILE options for waveform dumping
-ifeq ($(DUMP_WAVES),1)
-VCS_COMPILE_OPTS += +define+DUMP_WAVES
+ifeq ($(DUMP_WAVES_FSDB),1)
+VCS_COMPILE_OPTS += +define+DUMP_WAVES_FSDB
 VCS_RUN_OPTS += +fsdb+all \
                 +fsdbfile+$(WAVE_FILE)
 endif
@@ -158,7 +158,7 @@ run:
 	@echo "Timeout:   $(TEST_TIMEOUT_NS) ns"
 	@echo "Plusargs:  $(PLUSARGS)"
 	@echo "Log File:  $(LOG_DIR)/$(UVM_TESTNAME).log"
-ifeq ($(DUMP_WAVES),1)
+ifeq ($(DUMP_WAVES_FSDB),1)
 	@echo "Wave File: $(WAVE_FILE)"
 endif
 	./$(SIM_EXEC) $(VCS_RUN_OPTS) -l $(LOG_DIR)/$(UVM_TESTNAME).log
