@@ -244,6 +244,7 @@ def get_tohost_addr(elf_path: str) -> Optional[int]:
     return None
 
 def build_simulator(mpact_root: str,
+                    simulator: str,
                     mpact_riscv_root: Optional[str] = None) -> bool:
     logging.info("Building UVM Simulator (simv)...")
     env = os.environ.copy()
@@ -251,7 +252,7 @@ def build_simulator(mpact_root: str,
     if mpact_riscv_root:
         env["CORALNPU_MPACT_RISCV"] = mpact_riscv_root
 
-    cmd = ["make", "-C", "tests/uvm", "compile"]
+    cmd = ["make", "-C", "tests/uvm", "compile", f"SIMULATOR={simulator}"]
     try:
         subprocess.run(cmd, check=True, env=env)
         return True
@@ -450,6 +451,10 @@ def parse_arguments():
     parser = argparse.ArgumentParser(description="Run UVM regression")
     parser.add_argument("--limit", type=int, help="Limit number of tests")
     parser.add_argument("--target", type=str, help="Run a single target")
+    parser.add_argument("--simulator",
+                        type=str,
+                        help="Defines simulator used for tests",
+                        default="vcs")
     parser.add_argument("--list-targets",
                         action="store_true",
                         help="List targets and exit")
@@ -633,9 +638,9 @@ def run_spike_timeout_check(tests_to_run: List[Tuple[str, str]],
 
 def run_full_regression(tests_to_run: List[Tuple[str, str]], spike_bin: str,
                         mpact_root: str, mpact_riscv_root: Optional[str],
-                        temp_elf_dir: str):
+                        temp_elf_dir: str, simulator: str):
     # Build the UVM simulator once
-    if not build_simulator(mpact_root, mpact_riscv_root):
+    if not build_simulator(mpact_root, simulator, mpact_riscv_root):
         logging.critical("ERROR: Simulator build failed. Aborting regression.")
         sys.exit(1)
 
@@ -715,6 +720,7 @@ def run_full_regression(tests_to_run: List[Tuple[str, str]], spike_bin: str,
             "make", "-C", "tests/uvm", "run", 
             "UVM_VERBOSITY=UVM_LOW",
             "UVM_TESTNAME=coralnpu_regression_test",
+            f"SIMULATOR={simulator}",
             f"EXTRA_PLUSARGS=+REGRESSION_LIST={os.path.abspath(batch_list_path)}"
         ]
 
@@ -874,7 +880,7 @@ def main():
             return
 
         run_full_regression(tests_to_run, spike_bin, mpact_root,
-                            mpact_riscv_root, temp_elf_dir)
+                            mpact_riscv_root, temp_elf_dir, args.simulator)
 
 
 if __name__ == "__main__":
