@@ -222,13 +222,23 @@ module coralnpu_tb_top;
   //--------------------------------------------------------------------------
   // Waveform Dumping
   //--------------------------------------------------------------------------
-  `ifdef DUMP_WAVES
+  `ifdef DUMP_WAVES_FSDB
   initial begin
     $fsdbDumpfile($sformatf("./sim_work/waves/%s.fsdb", "coralnpu_base_test"));
     $fsdbDumpvars(0, coralnpu_tb_top, "+mda");
     `uvm_info("TB_TOP",
               $sformatf("FSDB Waveform Dumping Enabled to: %s",
               $sformatf("./sim_work/waves/%s.fsdb", "coralnpu_base_test")),
+              UVM_LOW);
+  end
+  `endif
+  `ifdef DUMP_WAVES_VCD
+  initial begin
+    $dumpfile($sformatf("./sim_work/waves/%s.vcd", "coralnpu_base_test"));
+    $dumpvars(0, coralnpu_tb_top, "+mda");
+    `uvm_info("TB_TOP",
+              $sformatf("VCD Waveform Dumping Enabled to: %s",
+              $sformatf("./sim_work/waves/%s.vcd", "coralnpu_base_test")),
               UVM_LOW);
   end
   `endif
