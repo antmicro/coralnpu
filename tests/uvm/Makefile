@@ -29,7 +29,9 @@ GENERATED_RTL_SRC = $(BAZEL_BIN_DIR)/hdl/chisel/src/coralnpu/$(GENERATED_RTL_NAM
 
 # User Configuration
 VCS = vcs
+VERILATOR ?= verilator
 CXX = clang++
+SIMULATOR ?= vcs
 
 # UVM DV Directories
 COMMON_DIR = ./common
@@ -41,6 +43,7 @@ UTILS_DIR = ./utils
 
 # Simulation Work Directory
 SIM_DIR = ./sim_work
+BUILD_DIR = $(SIM_DIR)/build
 LOG_DIR = $(SIM_DIR)/logs
 WAVE_DIR = $(SIM_DIR)/waves
 
@@ -49,13 +52,13 @@ MPACT_BAZEL_BIN_DIR = $(CORALNPU_MPACT)/bazel-bin/sim/cosim
 MPACT_COSIM_LIB_NAME = coralnpu_cosim_lib_static
 MPACT_LIB_PATH = $(MPACT_BAZEL_BIN_DIR)/lib$(MPACT_COSIM_LIB_NAME).a
 
-# File List for VCS -f option
+# File List for -f option
 FILE_LIST = ./coralnpu_dv.f
 
 # Simulation Settings
 SIM_EXEC = $(SIM_DIR)/simv
 UVM_TESTNAME ?= coralnpu_base_test
-TEST_ELF ?= $(BIN_DIR)/program.elf
+TEST_ELF ?= $(BIN_DIR)/rvv_aadd_int16_m1.elf
 UVM_VERBOSITY ?= UVM_MEDIUM
 TEST_TIMEOUT_NS ?= 100000
 MISA_VALUE ?= "'h40201120'"
@@ -65,44 +68,70 @@ PLUSARGS = +UVM_TESTNAME=$(UVM_TESTNAME) \
            +MISA_VALUE=$(MISA_VALUE)
 
 # Waveform Dumping
+ifeq ($(SIMULATOR),vcs)
 DUMP_WAVES_FSDB = 1
 WAVE_FILE = $(WAVE_DIR)/$(UVM_TESTNAME).fsdb
+else
+DUMP_WAVES_VCD = 1
+WAVE_FILE = $(WAVE_DIR)/$(UVM_TESTNAME).vcd
+endif
 
-# VCS Options
-VCS_COMPILE_OPTS = \
+# Compile options
+ifeq ($(SIMULATOR),vcs)
+SIM_COMPILE_OPTS = \
 	-full64 \
 	-sverilog \
 	+define+UVM_NO_DEPRECATED \
 	+define+TB_SUPPORT \
-        +define+VLEN_128 \
-        +define+ZVE32F_ON \
+		+define+VLEN_128 \
+		+define+ZVE32F_ON \
 	-ntb_opts uvm-1.2 \
 	-debug_access+all \
 	-kdb \
 	-timescale=1ns/1ps \
-	-o $(SIM_EXEC)
+	-o $(SIM_EXEC) \
+	-cpp $(CXX) \
+	-cppflags "-std=c++17" \
+	-CFLAGS "-I$(CORALNPU_MPACT)" \
+	$(MPACT_LIB_PATH)
+else
+SIM_COMPILE_OPTS = \
+	--binary \
+	--build-jobs $(shell nproc --all) \
+	--top coralnpu_tb_top \
+	-Wno-PINMISSING -Wno-lint -Wno-style -Wno-fatal \
+	--vpi \
+	--trace-vcd \
+	+define+UVM_NO_DEPRECATED \
+	+define+TB_SUPPORT \
+	+define+VLEN_128 \
+	+define+ZVE32F_ON \
+	+define+DUMP_WAVES_VCD \
+	--timescale 1ns/1ps \
+	-CFLAGS "-std=c++17 -I$(CORALNPU_MPACT)" \
+	-I"$(UVM)/src/" \
+	"$(UVM)/src/uvm_pkg.sv" \
+	"$(UVM)/src/dpi/uvm_dpi.cc" \
+  	"$(MPACT_LIB_PATH)" \
+	-Mdir $(BUILD_DIR) \
+	-o simv
+SIM_EXEC = $(BUILD_DIR)/simv
+endif
 
-# Add C++ compiler/linker options for MPACT-Sim
-VCS_COMPILE_OPTS += \
-    -cpp $(CXX) \
-    -cppflags "-std=c++17" \
-    -CFLAGS "-I$(CORALNPU_MPACT)" \
-    $(MPACT_LIB_PATH)
-
-VCS_RUN_OPTS = \
+SIM_RUN_OPTS = \
 	$(PLUSARGS) \
 	$(EXTRA_PLUSARGS)
 
 # Add define to COMPILE options for waveform dumping
 ifeq ($(DUMP_WAVES_FSDB),1)
-VCS_COMPILE_OPTS += +define+DUMP_WAVES_FSDB
-VCS_RUN_OPTS += +fsdb+all \
+SIM_COMPILE_OPTS += +define+DUMP_WAVES_FSDB
+SIM_RUN_OPTS += +fsdb+all \
                 +fsdbfile+$(WAVE_FILE)
 endif
 
 # Add Spike Log to runtime options if defined
 ifdef SPIKE_LOG
-VCS_RUN_OPTS += +SPIKE_LOG=$(SPIKE_LOG)
+SIM_RUN_OPTS += +SPIKE_LOG=$(SPIKE_LOG)
 endif
 
 # Bazel flags
@@ -143,8 +172,8 @@ rtl:
 
 # Compile the design
 $(SIM_EXEC): $(FILE_LIST) dirs build_mpact_lib rtl
-	@echo "--- Compiling with VCS ---"
-	$(VCS) $(VCS_COMPILE_OPTS) -l $(LOG_DIR)/compile.log -f $(FILE_LIST) $(GENERATED_RTL_SRC)
+	@echo "--- Compiling Simulation ---"
+	$(SIMULATOR) $(SIM_COMPILE_OPTS) -f $(FILE_LIST) $(GENERATED_RTL_SRC)
 	@echo "--- Compilation Finished ---"
 
 compile: $(SIM_EXEC)
@@ -161,7 +190,7 @@ run:
 ifeq ($(DUMP_WAVES_FSDB),1)
 	@echo "Wave File: $(WAVE_FILE)"
 endif
-	./$(SIM_EXEC) $(VCS_RUN_OPTS) -l $(LOG_DIR)/$(UVM_TESTNAME).log
+	./$(SIM_EXEC) $(SIM_RUN_OPTS) -l $(LOG_DIR)/$(UVM_TESTNAME).log
 	@echo "--- Simulation Finished ---"
 
 # 3-Way Simulation
