@@ -5,6 +5,9 @@ image: debian:latest
 
 build-and-test: 
   stage: build-and-test
+  artifacts:
+    paths:
+      - uvm_regression_*.zip
   variables:
     SCALENODE_CPU: 16
     SCALENODE_RAM: 16000
