@@ -7,7 +7,7 @@ build-and-test:
   stage: build-and-test
   artifacts:
     paths:
-      - uvm_regression_*.zip
+      - uvm_regression_*/*
   variables:
     SCALENODE_CPU: 16
     SCALENODE_RAM: 16000
