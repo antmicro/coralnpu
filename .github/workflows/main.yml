@@ -18,9 +18,10 @@ jobs:
       - uses: actions/checkout@v5
         with:
           fetch-depth: 1
-          ssh-key: ${{ secrets.ACTIONS_DEPLOY_KEY }}
+          #ssh-key: ${{ secrets.ACTIONS_DEPLOY_KEY }}
       - uses: bazel-contrib/setup-bazel@0.15.0
         with:
+          bazelisk-version: 1.29.0
           # Avoid downloading Bazel every time.
           bazelisk-cache: true
           # Store build cache per workflow.
@@ -41,3 +42,32 @@ jobs:
           files: |
             ${{ github.workspace }}/bazel-bin/hdl/chisel/src/coralnpu/RvvCoreMiniAxi.sv
             ${{ github.workspace }}/bazel-bin/hdl/chisel/src/coralnpu/RvvCoreMiniAxi.zip
+  test:
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+    timeout-minutes: 30
+    needs: build
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 1
+      - uses: bazel-contrib/setup-bazel@0.15.0
+        with:
+          bazelisk-version: 1.29.0
+          # Avoid downloading Bazel every time.
+          bazelisk-cache: true
+          # Store build cache per workflow.
+          disk-cache: ${{ github.workflow }}
+          # Share repository cache between workflows.
+          repository-cache: true
+      - name: Install Verilator
+        run: |
+          git clone https://github.com/verilator/verilator
+          pushd verilator
+          autoconf
+          ./configure
+          make -j $(nproc) || true
+          export VERILATOR_ROOT=`pwd`
+          popd
+          python3 utils/run_uvm_regression.py --simulator=verilator
