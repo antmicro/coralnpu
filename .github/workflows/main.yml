@@ -106,13 +106,6 @@ jobs:
         run: |
           git clone https://github.com/chipsalliance/uvm-verilator.git -b uvm-1.2
           git -C uvm-verilator cherry-pick -n --strategy=recursive -X theirs 5a37baacfed0722b523b05decc9b94fe3e9efbe4
-      - name: Clone coralnpu-mpact
-        run: |
-          git clone https://github.com/google-coral/coralnpu-mpact.git
-          pushd coralnpu-mpact
-          git checkout 61a6317aca4de62a4862181d24dc22a1795bda43
-          bazel build //sim/cosim:coralnpu_cosim_lib_static
-          popd
       - name: Install dependencies
         run: |
           sudo apt-get update
@@ -124,5 +117,4 @@ jobs:
           chmod +x -R ${{ env.CI_VERILATOR_INSTALL_DIR }}/bin
           export PATH=$PATH:${{ github.workspace }}/verilator_install/bin
           export UVM=${{ github.workspace }}/uvm-verilator
-          export CORALNPU_MPACT=${{ github.workspace }}/coralnpu-mpact
           python3 utils/run_uvm_regression.py --simulator=verilator
