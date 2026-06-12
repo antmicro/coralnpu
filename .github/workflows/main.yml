@@ -13,6 +13,7 @@ env:
 jobs:
   build-coralnpu:
     runs-on: ubuntu-22.04
+    if: false
     permissions:
       contents: write
     timeout-minutes: 30
@@ -72,13 +73,12 @@ jobs:
           name: verilator
           path: |
             ${{ env.CI_VERILATOR_INSTALL_DIR }}
-  test:
+  simulate:
     runs-on: ubuntu-22.04
     permissions:
       contents: write
     timeout-minutes: 30
     needs:
-      - build-coralnpu
       - build-verilator
     env:
       CI_BUILD_STAGE_NAME: build
@@ -102,10 +102,6 @@ jobs:
         with:
           name: verilator
           path: ${{ github.workspace }}/verilator_install
-      - uses: actions/download-artifact@v8
-        with:
-          name: RvvCoreMiniAxi
-          path: ${{ github.workspace }}/bazel-bin/hdl/chisel/src/coralnpu
       - name: Clone UVM
         run: |
           git clone https://github.com/chipsalliance/uvm-verilator.git -b uvm-1.2
@@ -114,6 +110,8 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y git gcc autoconf bc bison build-essential ca-certificates ccache clang curl device-tree-compiler flex fuse3 gawk git gnupg mold python-is-python3 python3 python3-full python3-pip python3-pyelftools python3-setuptools python3-venv python3-venv srecord unzip xxd zip openjdk-17-jre
+      - name: Generate RTL
+        run: bazel build //hdl/chisel/src/coralnpu:rvv_core_mini_axi_cc_library_emit_verilog
       - name: Run simulation
         run: |
           chmod +x -R ${{ env.CI_VERILATOR_INSTALL_DIR }}/bin
