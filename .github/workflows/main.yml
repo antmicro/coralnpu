@@ -1,4 +1,4 @@
-name: CoralNPU RTL Build
+name: CoralNPU RTL
 on:
   workflow_dispatch:
   pull_request:
@@ -7,9 +7,11 @@ on:
       - "*"
     branches:
       - main
+env:
+  CI_VERILATOR_VERSION: v5.048
 
 jobs:
-  build:
+  build-coralnpu:
     runs-on: ubuntu-22.04
     permissions:
       contents: write
@@ -42,12 +44,48 @@ jobs:
           files: |
             ${{ github.workspace }}/bazel-bin/hdl/chisel/src/coralnpu/RvvCoreMiniAxi.sv
             ${{ github.workspace }}/bazel-bin/hdl/chisel/src/coralnpu/RvvCoreMiniAxi.zip
+  build-verilator:
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+    timeout-minutes: 30
+    env:
+      CI_BUILD_STAGE_NAME: build
+      CI_RUNS_ON: ubuntu-22.04
+      CI_OS_NAME: linux
+      CI_VERILATOR_INSTALL_DIR: ${{ github.workspace }}/verilator_install
+    steps:
+      - name: clone verilator
+        run: |
+          git clone https://github.com/verilator/verilator -b ${{ env.CI_VERILATOR_VERSION }}
+      - name: install dependencies
+        run: ${{ github.workspace }}/verilator/ci/ci-install.bash
+      - name:
+        run: |
+          pushd ${{ github.workspace }}/verilator
+          autoconf
+          ./configure --prefix="${{ env.CI_VERILATOR_INSTALL_DIR }}"
+          make -j $(nproc)
+          make install
+          popd
+      - uses: actions/upload-artifact@v4
+        with:
+          name: verilator
+          path: |
+            ${{ env.CI_VERILATOR_INSTALL_DIR }}
   test:
     runs-on: ubuntu-22.04
     permissions:
       contents: write
     timeout-minutes: 30
-    needs: build
+    needs:
+      - build-coralnpu
+      - build-verilator
+    env:
+      CI_BUILD_STAGE_NAME: build
+      CI_RUNS_ON: ubuntu-22.04
+      CI_OS_NAME: linux
+      CI_VERILATOR_INSTALL_DIR: ${{ github.workspace }}/verilator_install
     steps:
       - uses: actions/checkout@v5
         with:
@@ -61,13 +99,21 @@ jobs:
           disk-cache: ${{ github.workflow }}
           # Share repository cache between workflows.
           repository-cache: true
-      - name: Install Verilator
+      - uses: actions/download-artifact@v8
+        with:
+          name: verilator
+          path: ${{ github.workspace }}/verilator_install
+      - uses: actions/download-artifact@v8
+        with:
+          name: RvvCoreMiniAxi
+          path: ${{ github.workspace }}/bazel-bin/hdl/chisel/src/coralnpu
+      - name: clone UVM
         run: |
-          git clone https://github.com/verilator/verilator
-          pushd verilator
-          autoconf
-          ./configure
-          make -j $(nproc) || true
-          export VERILATOR_ROOT=`pwd`
-          popd
+          git clone https://github.com/chipsalliance/uvm-verilator.git -b uvm-1.2
+          git -C uvm-verilator cherry-pick -n --strategy=recursive -X theirs 5a37baacfed0722b523b05decc9b94fe3e9efbe4
+      - name: run simulation
+        run: |
+          chmod +x -R ${{ env.CI_VERILATOR_INSTALL_DIR }}/bin
+          export PATH=$PATH:${{ github.workspace }}/verilator_install/bin
+          export UVM=${{ github.workspace }}/uvm-verilator
           python3 utils/run_uvm_regression.py --simulator=verilator
