@@ -90,27 +90,22 @@ jobs:
       - uses: actions/checkout@v5
         with:
           fetch-depth: 1
-      - uses: bazel-contrib/setup-bazel@0.15.0
-        with:
-          bazelisk-version: 1.29.0
-          # Avoid downloading Bazel every time.
-          bazelisk-cache: true
-          # Store build cache per workflow.
-          disk-cache: ${{ github.workflow }}
-          # Share repository cache between workflows.
-          repository-cache: true
       - uses: actions/download-artifact@v8
         with:
           name: verilator
           path: ${{ github.workspace }}/verilator_install
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y git gcc autoconf bc bison build-essential ca-certificates ccache clang curl device-tree-compiler flex fuse3 gawk git gnupg mold python-is-python3 python3 python3-full python3-pip python3-pyelftools python3-setuptools python3-venv python3-venv srecord unzip xxd zip openjdk-17-jre wget
+      - name: Install bazelisk
+        run: |
+          wget https://github.com/bazelbuild/bazelisk/releases/download/v1.29.0/bazelisk-amd64.deb
+          sudo apt-get install -y ./bazelisk-amd64.deb
       - name: Clone UVM
         run: |
           git clone https://github.com/chipsalliance/uvm-verilator.git -b uvm-1.2
           git -C uvm-verilator cherry-pick -n --strategy=recursive -X theirs 5a37baacfed0722b523b05decc9b94fe3e9efbe4
-      - name: Install dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y git gcc autoconf bc bison build-essential ca-certificates ccache clang curl device-tree-compiler flex fuse3 gawk git gnupg mold python-is-python3 python3 python3-full python3-pip python3-pyelftools python3-setuptools python3-venv python3-venv srecord unzip xxd zip openjdk-17-jre
       - name: Generate RTL
         run: bazel build //hdl/chisel/src/coralnpu:rvv_core_mini_axi_cc_library_emit_verilog
       - name: Run simulation
