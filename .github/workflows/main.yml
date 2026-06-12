@@ -57,7 +57,7 @@ jobs:
     steps:
       - name: clone verilator
         run: |
-          git clone https://github.com/verilator/verilator -b ${{ env.CI_VERILATOR_VERSION }}
+          git clone https://github.com/verilator/verilator
       - name: install dependencies
         run: ${{ github.workspace }}/verilator/ci/ci-install.bash
       - name:
@@ -113,8 +113,8 @@ jobs:
           git -C uvm-verilator cherry-pick -n --strategy=recursive -X theirs 5a37baacfed0722b523b05decc9b94fe3e9efbe4
       - name: Install dependencies
         run: |
-          apt-get update
-          apt-get install -y git gcc autoconf bc bison build-essential ca-certificates ccache clang curl device-tree-compiler flex fuse3 gawk git gnupg mold python-is-python3 python3 python3-full python3-pip python3-pyelftools python3-setuptools python3-venv python3-venv srecord unzip xxd zip openjdk-17-jre
+          sudo apt-get update
+          sudo apt-get install -y git gcc autoconf bc bison build-essential ca-certificates ccache clang curl device-tree-compiler flex fuse3 gawk git gnupg mold python-is-python3 python3 python3-full python3-pip python3-pyelftools python3-setuptools python3-venv python3-venv srecord unzip xxd zip openjdk-17-jre
       - name: Run simulation
         run: |
           chmod +x -R ${{ env.CI_VERILATOR_INSTALL_DIR }}/bin
