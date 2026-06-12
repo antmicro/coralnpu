@@ -25,8 +25,7 @@ jobs:
       - uses: bazel-contrib/setup-bazel@0.15.0
         with:
           bazelisk-version: 1.29.0
-          # Avoid downloading Bazel every time.
-          bazelisk-cache: true
+          # Avoid downloading Bazel every time. bazelisk-cache: true
           # Store build cache per workflow.
           disk-cache: ${{ github.workflow }}
           # Share repository cache between workflows.
@@ -108,11 +107,15 @@ jobs:
         with:
           name: RvvCoreMiniAxi
           path: ${{ github.workspace }}/bazel-bin/hdl/chisel/src/coralnpu
-      - name: clone UVM
+      - name: Clone UVM
         run: |
           git clone https://github.com/chipsalliance/uvm-verilator.git -b uvm-1.2
           git -C uvm-verilator cherry-pick -n --strategy=recursive -X theirs 5a37baacfed0722b523b05decc9b94fe3e9efbe4
-      - name: run simulation
+      - name: Install dependencies
+        run: |
+          apt-get update
+          apt-get install -y git gcc autoconf bc bison build-essential ca-certificates ccache clang curl device-tree-compiler flex fuse3 gawk git gnupg mold python-is-python3 python3 python3-full python3-pip python3-pyelftools python3-setuptools python3-venv python3-venv srecord unzip xxd zip openjdk-17-jre
+      - name: Run simulation
         run: |
           chmod +x -R ${{ env.CI_VERILATOR_INSTALL_DIR }}/bin
           export PATH=$PATH:${{ github.workspace }}/verilator_install/bin
