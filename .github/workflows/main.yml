@@ -78,7 +78,7 @@ jobs:
     runs-on: ubuntu-24.04
     permissions:
       contents: write
-    timeout-minutes: 30
+    timeout-minutes: 60
     needs:
       - build-verilator
     env:
@@ -92,8 +92,8 @@ jobs:
           fetch-depth: 1
       - uses: bazel-contrib/setup-bazel@0.15.0
         with:
-          bazelisk-version: 1.29.0
-          # Avoid downloading Bazel every time. bazelisk-cache: true
+          # Avoid downloading Bazel every time.
+          bazelisk-cache: true
           # Store build cache per workflow.
           disk-cache: ${{ github.workflow }}
           # Share repository cache between workflows.
