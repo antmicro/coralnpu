@@ -122,3 +122,8 @@ jobs:
           export CORALNPU_MPACT=${{ env.CI_TMPDIR }}/coralnpu-mpact
           bazel build //hdl/chisel/src/coralnpu:rvv_core_mini_axi_cc_library_emit_verilog
           python3 utils/run_uvm_regression.py --simulator=verilator
+      - uses: actions/upload-artifact@v4
+        with:
+          name: uvm_regression_result.zip
+          path: |
+            ${{ github.workspace }}/uvm_regression_*.zip
