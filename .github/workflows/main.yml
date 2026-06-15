@@ -84,32 +84,43 @@ jobs:
       CI_BUILD_STAGE_NAME: build
       CI_RUNS_ON: ubuntu-24.04
       CI_OS_NAME: linux
-      CI_VERILATOR_INSTALL_DIR: ${{ github.workspace }}/verilator_install
+      CI_TMPDIR: /tmp
     steps:
       - uses: actions/checkout@v5
         with:
           fetch-depth: 1
+      - uses: bazel-contrib/setup-bazel@0.15.0
+        with:
+          bazelisk-version: 1.29.0
+          # Avoid downloading Bazel every time. bazelisk-cache: true
+          # Store build cache per workflow.
+          disk-cache: ${{ github.workflow }}
+          # Share repository cache between workflows.
+          repository-cache: true
       - uses: actions/download-artifact@v8
         with:
           name: verilator
-          path: ${{ github.workspace }}/verilator_install
+          path: ${{ env.CI_TMPDIR }}/verilator_install
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y git gcc autoconf bc bison build-essential ca-certificates ccache clang curl device-tree-compiler flex fuse3 gawk git gnupg mold python-is-python3 python3 python3-full python3-pip python3-pyelftools python3-setuptools python3-venv python3-venv srecord unzip xxd zip openjdk-17-jre wget
-      - name: Install bazelisk
-        run: |
-          wget https://github.com/bazelbuild/bazelisk/releases/download/v1.29.0/bazelisk-amd64.deb
-          sudo apt-get install -y ./bazelisk-amd64.deb
+          sudo apt-get install -y git gcc autoconf bc bison build-essential ca-certificates ccache clang curl device-tree-compiler flex fuse3 gawk git gnupg mold python-is-python3 python3 python3-full python3-pip python3-pyelftools python3-setuptools python3-venv python3-venv srecord unzip xxd zip openjdk-17-jre
       - name: Clone UVM
         run: |
-          git clone https://github.com/chipsalliance/uvm-verilator.git -b uvm-1.2
-          git -C uvm-verilator cherry-pick -n --strategy=recursive -X theirs 5a37baacfed0722b523b05decc9b94fe3e9efbe4
+          git clone https://github.com/chipsalliance/uvm-verilator.git -b uvm-1.2 ${{ env.CI_TMPDIR }}/uvm-verilator
+          git -C ${{ env.CI_TMPDIR }}/uvm-verilator cherry-pick -n --strategy=recursive -X theirs 5a37baacfed0722b523b05decc9b94fe3e9efbe4
+      - name: Clone CoralNPU mpact
+        run: |
+          git clone https://github.com/google-coral/coralnpu-mpact.git ${{ env.CI_TMPDIR }}/coralnpu-mpact
+          pushd ${{ env.CI_TMPDIR }}/coralnpu-mpact
+          git checkout 61a6317aca4de62a4862181d24dc22a1795bda43
+          bazel build //sim/cosim:coralnpu_cosim_lib_static
       - name: Generate RTL
         run: bazel build //hdl/chisel/src/coralnpu:rvv_core_mini_axi_cc_library_emit_verilog
       - name: Run simulation
         run: |
-          chmod +x -R ${{ env.CI_VERILATOR_INSTALL_DIR }}/bin
-          export PATH=$PATH:${{ github.workspace }}/verilator_install/bin
-          export UVM=${{ github.workspace }}/uvm-verilator
+          chmod +x -R ${{ env.CI_TMPDIR }}/verilator_install/bin
+          export PATH=$PATH:${{ env.CI_TMPDIR }}/verilator_install/bin
+          export UVM=${{ env.CI_TMPDIR }}/uvm-verilator
+          export CORALNPU_MPACT=${{ env.CI_TMPDIR }}/coralnpu-mpact
           python3 utils/run_uvm_regression.py --simulator=verilator
