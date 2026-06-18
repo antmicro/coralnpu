@@ -331,3 +331,35 @@ def mpact_repos():
         workspace_file = "@coralnpu_hw//third_party/coralnpu_mpact:WORKSPACE",
     )
 
+def uvm_verilator_repos():
+    http_archive(
+        name = "uvm-verilator",
+        urls = ["https://github.com/chipsalliance/uvm-verilator/archive/refs/tags/uvm-1.2.zip"],
+        sha256 = "563cd3a674e5baff8ea6878a9488e85ec19976341cfae4618f4f7c40e378a17b",
+        build_file_content = """
+package(default_visibility = ["//visibility:public"])
+exports_files(glob(["**"]))
+filegroup(
+    name = "all_srcs",
+    srcs = glob([
+        "**/*",
+    ]),
+)
+        """,
+    )
+
+    git_repository(
+        name = "coralnpu_mpact_verilator",
+        commit = "61a6317aca4de62a4862181d24dc22a1795bda43",
+        remote = "https://github.com/google-coral/coralnpu-mpact",
+        build_file_content = """
+package(default_visibility = ["//visibility:public"])
+exports_files(glob(["**"]))
+filegroup(
+    name = "all_srcs",
+    srcs = glob([
+        "**/*",
+    ]),
+)
+        """,
+    )
