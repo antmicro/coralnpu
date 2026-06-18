@@ -45,9 +45,9 @@ def calculate_cosine_similarity(actual: np.ndarray,
 
 def load_real_attention_data(num_heads: int, seq_len: int, d_model: int, dut,
                              r):
-    q_path = r.Rlocation("coralnpu_hw/tests/cocotb/gemma_q.npy")
-    k_path = r.Rlocation("coralnpu_hw/tests/cocotb/gemma_k.npy")
-    v_path = r.Rlocation("coralnpu_hw/tests/cocotb/gemma_v.npy")
+    q_path = r.Rlocation("coralnpu_hw/tests/cocotb/rvv/ml_ops/gemma_kernels/test_data/gemma_q.npy")
+    k_path = r.Rlocation("coralnpu_hw/tests/cocotb/rvv/ml_ops/gemma_kernels/test_data/gemma_k.npy")
+    v_path = r.Rlocation("coralnpu_hw/tests/cocotb/rvv/ml_ops/gemma_kernels/test_data/gemma_v.npy")
 
     if (q_path and os.path.exists(q_path) and os.path.exists(k_path) and
             os.path.exists(v_path)):
@@ -87,7 +87,7 @@ async def core_mini_rvv_flashattention_test(dut):
     fixture = await Fixture.Create(dut, csr_base_addr=0x200000)
 
     elf_name = "rvv_flashattention_test.elf"
-    elf_path = r.Rlocation(f"coralnpu_hw/tests/cocotb/rvv/ml_ops/{elf_name}")
+    elf_path = r.Rlocation(f"coralnpu_hw/tests/cocotb/rvv/ml_ops/gemma_kernels/{elf_name}")
 
     await fixture.load_elf_and_lookup_symbols(
         elf_path, ["q_buf", "k_buf", "v_buf", "o_buf", "csr_cycle_count"])
