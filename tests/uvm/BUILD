@@ -10,6 +10,52 @@ load("//rules:verilator.bzl", "verilator_model")
 
 package(default_visibility = ["//visibility:public"])
 
+exports_files(glob(include = ["common/**/*", "env/**/*", "tb/**/*", "tests/**/*"]))
+
+# +incdir arguments like in coralnpu_dv.f 
+filegroup(
+    name = "include_dirs",
+    srcs = [
+    "common",
+    "common/coralnpu_axi_master",
+    "common/coralnpu_axi_slave",
+    "common/coralnpu_irq",
+    "common/transaction_item",
+    "common/rvvi",
+    "common/cosim",
+    "env",
+    "tests",
+    "tb",
+    ],
+)
+
+# Source files like in coralnpu_dv.f
+filegroup(
+    name = "source_files",
+    srcs = [
+        # Backdoor DPI
+        #"//hdl/verilog:sram_backdoor.cc",
+        "//hdl/verilog:dpi_files",
+        # Interfaces
+        "common/coralnpu_axi_master/coralnpu_axi_master_if.sv",
+        "common/coralnpu_axi_slave/coralnpu_axi_slave_if.sv",
+        "common/coralnpu_irq/coralnpu_irq_if.sv",
+        "common/cosim/coralnpu_cosim_dpi_if.sv",
+        # UVM Packages (in dependency order)
+        "common/memory_map_pkg.sv",
+        "common/transaction_item/transaction_item_pkg.sv",
+        "common/coralnpu_axi_master/coralnpu_axi_master_agent_pkg.sv",
+        "common/coralnpu_axi_slave/coralnpu_axi_slave_agent_pkg.sv",
+        "common/coralnpu_irq/coralnpu_irq_agent_pkg.sv",
+        "common/cosim/coralnpu_rvvi_agent_pkg.sv",
+        "common/cosim/coralnpu_cosim_checker_pkg.sv",
+        "env/coralnpu_env_pkg.sv",
+        "tests/coralnpu_test_pkg.sv",
+        # Top-Level Testbench
+        "tb/coralnpu_tb_top.sv",
+    ],
+)
+
 
 verilator_model(
     name = "uvm_sim_verilator",
@@ -24,10 +70,10 @@ verilator_model(
         "-Wno-style",
         "-Wno-fatal",
         "--timescale 1ns/1ps",
-        "--trace-vcd",
         "-CFLAGS \"-std=c++17\"",
     ],
     hdl_toplevel = "coralnpu_tb_top",
-    verilog_source = "//hdl/chisel/src/coralnpu:rvv_core_mini_verification_axi_cc_library_emit_verilog",
-    file_list = "coralnpu_dv.f",
+    verilog_sources = ["//hdl/chisel/src/coralnpu:rvv_core_mini_verification_axi_cc_library_emit_verilog"],
+    include_dirs = [":include_dirs"],
+    source_files = [":source_files"],
 )

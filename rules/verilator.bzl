@@ -37,9 +37,9 @@ def _verilator_testbench_test_impl(ctx):
     for verilog_file in verilog_files:
         command.append(verilog_file.path)
     command.append("-Mdir")
-    command.append(vcs_objdir_output.path)
+    command.append(verilator_objdir_output.path)
     command.append("-o")
-    command.append(vcs_binary_output.path)
+    command.append(verilator_binary_output.path)
 
     ctx.actions.run_shell(
         outputs=[verilator_objdir_output, verilator_binary_output],
@@ -180,6 +180,10 @@ def _verilator_model_impl(ctx):
         add_input(f)
         verilog_paths.append(f.path)
 
+    for f in ctx.files.source_files:
+        add_input(f)
+        verilog_paths.append(f.path)
+
     vlt_file = ctx.actions.declare_file(hdl_toplevel + ".vlt")
     ctx.actions.expand_template(
         output = vlt_file,
@@ -199,6 +203,8 @@ def _verilator_model_impl(ctx):
     # Prepend $PWD to paths for verilator to find them in the sandbox
     verilog_sources_str = " ".join(["$PWD/" + p if not p.startswith("/") else p for p in verilog_paths])
 
+    include_dirs_str = " ".join(["-I" + p.path for p in ctx.files.include_dirs])
+
     verilator_cmd = " ".join("""
         VERILATOR_ROOT={verilator_root} {verilator} \
             -cc \
@@ -208,6 +214,7 @@ def _verilator_model_impl(ctx):
             --vpi \
             --prefix Vtop \
             -o {hdl_toplevel} \
+            {include_dirs_str}
             -I"{uvm_lib_path}/src" \
 	        "{uvm_lib_path}/src/uvm_pkg.sv" \
 	        "{uvm_lib_path}/src/dpi/uvm_dpi.cc" \
@@ -224,6 +231,7 @@ def _verilator_model_impl(ctx):
         verilator_root = verilator_root,
         outdir = outdir,
         hdl_toplevel = hdl_toplevel,
+        include_dirs_str = include_dirs_str,
         uvm_lib_path = uvm_lib_path,
         coralnpu_mpact_lib_path = coralnpu_mpact_lib_path,
         cflags = " ".join(ctx.attr.cflags),
@@ -236,7 +244,6 @@ def _verilator_model_impl(ctx):
 
     make_cmd = "PATH=`dirname {ld}`:$PATH make -j {parallelism} -C {outdir} -f Vtop.mk {trace} CXX={cxx} AR={ar} LINK={cxx} > {make_log} 2>&1".format(
         outdir = outdir,
-        cocotb_lib_path = cocotb_lib_path,
         make_log = make_log.path,
         trace = "VM_TRACE=1" if ctx.attr.trace else "",
         ar = ar_executable,
@@ -254,8 +261,8 @@ def _verilator_model_impl(ctx):
             [f for f in all_inputs_dict.values()],
             transitive = [
                 depset(ctx.files._verilator),
-                depset(ctx.files._cocotb_verilator_lib),
-                depset(ctx.files._cocotb_verilator_cpp),
+                depset(ctx.files._uvm_lib),
+                depset(ctx.files._coralnpu_mpact_lib),
             ],
         ),
         command = script,
@@ -275,7 +282,7 @@ def _verilator_model_impl(ctx):
     ]
 
 verilator_model = rule(
-    doc = """Builds a standalone verilator model.
+    doc = """Builds a standalone Verilator model.
 
     This rule takes a verilog source file and a toplevel module name and
     builds a verilator model.
@@ -293,7 +300,8 @@ verilator_model = rule(
     attrs = {
         "verilog_source": attr.label(allow_single_file = True, mandatory = False),
         "verilog_sources": attr.label_list(allow_files = [".v", ".sv"]),
-        "file_list": attr.label(allow_single_file = True, mandatory = False, allow_files = [".f"]),
+        "include_dirs": attr.label_list(allow_files = True),
+        "source_files": attr.label_list(allow_files = True),
         "hdl_toplevel": attr.string(mandatory = True),
         "cflags": attr.string_list(default = []),
         "deps": attr.label_list(providers = [[CcInfo], [VerilogInfo]]),
@@ -313,11 +321,11 @@ verilator_model = rule(
             cfg = "exec",
         ),
         "_uvm_lib": attr.label(
-            default = "@verilator//:verilator_uvm_lib",
+            default = "@uvm-verilator//:all_srcs",
             allow_files = True,
         ),
         "_coralnpu_mpact_lib": attr.label(
-            default = "@coralnpu_mpact//:coralnpu_sim_users",
+            default = "@coralnpu_mpact_verilator//:all_srcs",
             allow_files = True,
         ),
     },
