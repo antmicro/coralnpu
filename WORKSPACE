@@ -25,6 +25,7 @@ load(
     "rvvi_repos",
     "tflite_repos",
     "mpact_repos",
+    "uvm_verilator_repos",
 )
 load("//rules:host_cpus.bzl", "host_cpus")
 
@@ -240,3 +241,5 @@ local_repository(
     name = "netlist_test",
     path = "internal/netlist_test",
 )
+
+uvm_verilator_repos()
