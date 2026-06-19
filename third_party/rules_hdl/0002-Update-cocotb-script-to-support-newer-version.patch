@@ -164,7 +164,7 @@ diff --git a/dependency_support/verilator/verilator.bzl b/dependency_support/ver
 index 376a24f..749c6b6 100644
 --- a/dependency_support/verilator/verilator.bzl
 +++ b/dependency_support/verilator/verilator.bzl
-@@ -22,7 +22,11 @@ def verilator():
+@@ -22,7 +22,7 @@ def verilator():
          http_archive,
          name = "verilator",
          build_file = Label("@rules_hdl//dependency_support/verilator:verilator.BUILD.bazel"),
