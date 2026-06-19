@@ -215,9 +215,9 @@ def _verilator_model_impl(ctx):
             --prefix Vtop \
             -o {hdl_toplevel} \
             {include_dirs_str}
-            -I"{uvm_lib_path}/src" \
-	        "{uvm_lib_path}/src/uvm_pkg.sv" \
-	        "{uvm_lib_path}/src/dpi/uvm_dpi.cc" \
+            -I"{uvm_lib_path}/uvm-verilator-uvm-1.2/src" \
+	        "{uvm_lib_path}/uvm-verilator-uvm-1.2/src/uvm_pkg.sv" \
+	        "{uvm_lib_path}/uvm-verilator-uvm-1.2/src/dpi/uvm_dpi.cc" \
 	        -CFLAGS "-I{coralnpu_mpact_lib_path}" \
             "{coralnpu_mpact_lib_path}/bazel-bin/sim/cosim/libcoralnpu_cosim_lib_static.a" \
             {trace} \

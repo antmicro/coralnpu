@@ -338,7 +338,7 @@ def uvm_verilator_repos():
         sha256 = "563cd3a674e5baff8ea6878a9488e85ec19976341cfae4618f4f7c40e378a17b",
         build_file_content = """
 package(default_visibility = ["//visibility:public"])
-exports_files(glob(["**"]))
+exports_files(glob(["**/*"]))
 filegroup(
     name = "all_srcs",
     srcs = glob([
@@ -354,7 +354,7 @@ filegroup(
         remote = "https://github.com/google-coral/coralnpu-mpact",
         build_file_content = """
 package(default_visibility = ["//visibility:public"])
-exports_files(glob(["**"]))
+exports_files(glob(["**/*"]))
 filegroup(
     name = "all_srcs",
     srcs = glob([
