@@ -184,6 +184,12 @@ def _verilator_model_impl(ctx):
         add_input(f)
         verilog_paths.append(f.path)
 
+    for f in ctx.files.source_file_deps:
+        add_input(f)
+
+    for f in ctx.files.include_dirs_deps:
+        add_input(f)
+
     vlt_file = ctx.actions.declare_file(hdl_toplevel + ".vlt")
     ctx.actions.expand_template(
         output = vlt_file,
@@ -198,7 +204,7 @@ def _verilator_model_impl(ctx):
 
     verilator_root = "$PWD/{}.runfiles/coralnpu_hw/external/verilator".format(ctx.executable._verilator_bin.path)
     uvm_lib_path = "$PWD/{}".format(ctx.files._uvm_lib[0].dirname)
-    coralnpu_mpact_lib_path = "$PWD/{}".format(ctx.files._coralnpu_mpact_lib[0].dirname)
+    coralnpu_mpact_lib_path = "$PWD/{}".format(ctx.files.coralnpu_mpact_lib[0].path)
 
     # Prepend $PWD to paths for verilator to find them in the sandbox
     verilog_sources_str = " ".join(["$PWD/" + p if not p.startswith("/") else p for p in verilog_paths])
@@ -215,11 +221,10 @@ def _verilator_model_impl(ctx):
             --prefix Vtop \
             -o {hdl_toplevel} \
             {include_dirs_str}
-            -I"{uvm_lib_path}/uvm-verilator-uvm-1.2/src" \
-	        "{uvm_lib_path}/uvm-verilator-uvm-1.2/src/uvm_pkg.sv" \
-	        "{uvm_lib_path}/uvm-verilator-uvm-1.2/src/dpi/uvm_dpi.cc" \
-	        -CFLAGS "-I{coralnpu_mpact_lib_path}" \
-            "{coralnpu_mpact_lib_path}/bazel-bin/sim/cosim/libcoralnpu_cosim_lib_static.a" \
+            -I"{uvm_lib_path}/src" \
+	        "{uvm_lib_path}/src/uvm_pkg.sv" \
+	        "{uvm_lib_path}/src/dpi/uvm_dpi.cc" \
+            "{coralnpu_mpact_lib_path}" \
             {trace} \
             {cflags} \
             -I. -Ihdl/verilog {dpi_includes} \
@@ -262,7 +267,6 @@ def _verilator_model_impl(ctx):
             transitive = [
                 depset(ctx.files._verilator),
                 depset(ctx.files._uvm_lib),
-                depset(ctx.files._coralnpu_mpact_lib),
             ],
         ),
         command = script,
@@ -301,10 +305,12 @@ verilator_model = rule(
         "verilog_source": attr.label(allow_single_file = True, mandatory = False),
         "verilog_sources": attr.label_list(allow_files = [".v", ".sv"]),
         "include_dirs": attr.label_list(allow_files = True),
+        "include_dirs_deps": attr.label_list(allow_files = True),
         "source_files": attr.label_list(allow_files = True),
+        "source_file_deps": attr.label_list(allow_files = True),
         "hdl_toplevel": attr.string(mandatory = True),
         "cflags": attr.string_list(default = []),
-        "deps": attr.label_list(providers = [[CcInfo], [VerilogInfo]]),
+        "deps": attr.label_list(providers = [[DefaultInfo], [CcInfo], [VerilogInfo]]),
         "trace": attr.bool(default = False),
         "vlt_tpl": attr.label(
             default = "@coralnpu_hw//rules:default.vlt.tpl",
@@ -324,8 +330,7 @@ verilator_model = rule(
             default = "@uvm-verilator//:all_srcs",
             allow_files = True,
         ),
-        "_coralnpu_mpact_lib": attr.label(
-            default = "@coralnpu_mpact_verilator//:all_srcs",
+        "coralnpu_mpact_lib": attr.label(
             allow_files = True,
         ),
     },

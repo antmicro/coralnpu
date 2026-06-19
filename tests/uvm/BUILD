@@ -6,6 +6,7 @@ load("@rules_cc//cc:find_cc_toolchain.bzl", "find_cc_toolchain")
 load("@rules_cc//cc/common:cc_info.bzl", "CcInfo")
 load("@rules_hdl//verilator:defs.bzl", "verilator_cc_library")
 load("@rules_hdl//verilog:providers.bzl", "VerilogInfo", "verilog_library")
+load("//rules:utils.bzl", "filter_files_by_extension")
 load("//rules:verilator.bzl", "verilator_model")
 
 package(default_visibility = ["//visibility:public"])
@@ -16,12 +17,10 @@ exports_files(glob(include = ["common/**/*", "env/**/*", "tb/**/*", "tests/**/*"
 filegroup(
     name = "include_dirs",
     srcs = [
-    "common",
     "common/coralnpu_axi_master",
     "common/coralnpu_axi_slave",
     "common/coralnpu_irq",
     "common/transaction_item",
-    "common/rvvi",
     "common/cosim",
     "env",
     "tests",
@@ -29,13 +28,18 @@ filegroup(
     ],
 )
 
+filegroup(
+    name = "include_dirs_deps",
+    srcs = glob(include = ["common/**/*", "env/**/*", "tb/**/*", "tests/**/*"]),
+)
+
+
 # Source files like in coralnpu_dv.f
 filegroup(
     name = "source_files",
     srcs = [
         # Backdoor DPI
-        #"//hdl/verilog:sram_backdoor.cc",
-        "//hdl/verilog:dpi_files",
+        ":sram_backdoor_dpi_cc",
         # Interfaces
         "common/coralnpu_axi_master/coralnpu_axi_master_if.sv",
         "common/coralnpu_axi_slave/coralnpu_axi_slave_if.sv",
@@ -56,6 +60,17 @@ filegroup(
     ],
 )
 
+filter_files_by_extension(
+    name = "sram_backdoor_dpi_cc",
+    src = "//hdl/verilog:dpi_files",
+    extensions = ["cc"],
+)
+
+filter_files_by_extension(
+    name = "coralnpu_cosim_lib_static_archive",
+    src = "@coralnpu_mpact_verilator//:coralnpu_cosim_lib_static",
+    extensions = ["a"],
+)
 
 verilator_model(
     name = "uvm_sim_verilator",
@@ -66,14 +81,25 @@ verilator_model(
         "+define+ZVE32F_ON",
         "+define+DUMP_WAVES_VCD",
         "-Wno-PINMISSING",
+        "-Wno-UNOPTFLAT",
         "-Wno-lint",
         "-Wno-style",
         "-Wno-fatal",
+        "--timing",
         "--timescale 1ns/1ps",
         "-CFLAGS \"-std=c++17\"",
     ],
     hdl_toplevel = "coralnpu_tb_top",
-    verilog_sources = ["//hdl/chisel/src/coralnpu:rvv_core_mini_verification_axi_cc_library_emit_verilog"],
+    verilog_sources = ["//hdl/chisel/src/coralnpu:rvv_core_mini_verification_axi_cc_library_emit_verilog_single_sv"],
     include_dirs = [":include_dirs"],
+    include_dirs_deps = [":include_dirs_deps"],
     source_files = [":source_files"],
+    source_file_deps = ["//hdl/verilog:dpi_files"],
+    coralnpu_mpact_lib = ":coralnpu_cosim_lib_static_archive",
+    deps = [
+        "@coralnpu_mpact_verilator//:coralnpu_cosim_lib_static",
+        "@coralnpu_mpact_verilator//:all_srcs",
+    ]
 )
+
+
