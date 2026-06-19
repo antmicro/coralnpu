@@ -153,23 +153,19 @@ index 3c6f975..77860d1 100644
          "include/vltstd/sv_vpi_user.h",
          "include/vltstd/vpi_user.h",
 diff --git a/dependency_support/verilator/verilator.bzl b/dependency_support/verilator/verilator.bzl
-index 376a24f..427febb 100644
+index 376a24f..ac74254 100644
 --- a/dependency_support/verilator/verilator.bzl
 +++ b/dependency_support/verilator/verilator.bzl
-@@ -22,7 +22,11 @@ def verilator():
+@@ -22,7 +22,7 @@ def verilator():
          http_archive,
          name = "verilator",
          build_file = Label("@rules_hdl//dependency_support/verilator:verilator.BUILD.bazel"),
 -        urls = ["https://github.com/verilator/verilator/archive/refs/tags/v5.022.tar.gz"],
 -        sha256 = "3c2f5338f4b6ce7e2f47a142401acdd18cbf4c5da06092618d6d036c0afef12d",
 -        strip_prefix = "verilator-5.022",
-+        urls = ["https://github.com/verilator/verilator/archive/refs/tags/v5.032.tar.gz"],
-+        sha256 = "5a262564b10be8bdb31ff4fb67d77bcf5f52fc1b4e6c88d5ca3264fb481f1e41",
-+        strip_prefix = "verilator-5.032",
-+        patch_args = ["-p1"],
-+        patches = [
-+            Label("@rules_hdl//dependency_support/verilator:0001-Remove-autodetect-of-VERILATOR_ROOT.patch"),
-+        ],
++        urls = ["https://github.com/verilator/verilator/archive/749b93e4053434590f3ee4358c06f2eb8624872f.tar.gz"],
++        sha256 = "00cbe645b79f1cd5649bc28b2526e835cc5f88ff3484eb92a6c8539ad16facf7",
++        strip_prefix = "verilator-749b93e4053434590f3ee4358c06f2eb8624872f",
      )
 -- 
 2.39.5
