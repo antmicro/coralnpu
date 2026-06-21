@@ -357,9 +357,38 @@ filegroup(
         ]
     )
 
+    http_file(
+        name = "cc_static_library_external",
+        downloaded_file_path = "cc_static_libarary.bzl",
+        sha256 = "1287ce9f7e5fe31ad1b5937781531e4ab3f4656edabf650cca9ca720ceb31806",
+        urls = ["https://raw.githubusercontent.com/project-oak/oak/fcceea755f0274d3a0eb7c0461b30af3dc28e40a/cc/build_defs.bzl"],
+    )
+
+    http_file(
+        name = "svdpi_h_file",
+        downloaded_file_path = "svdpi.h",
+        sha256 = "2528c8e529b66dd8e795c8a0fee326166cc51f7dee8fc6a0c6c930534fc780a6",
+        urls = ["https://raw.githubusercontent.com/verilator/verilator/v5.028/include/vltstd/svdpi.h"],
+    )
+
     git_repository(
-        name = "coralnpu_mpact_verilator",
+        name = "coralnpu-mpact-verilator",
         commit = "61a6317aca4de62a4862181d24dc22a1795bda43",
         remote = "https://github.com/google-coral/coralnpu-mpact",
         workspace_file = "@coralnpu_hw//third_party/coralnpu_mpact:WORKSPACE",
+        build_file_content = """
+package(default_visibility = ["//visibility:public"])
+exports_files(glob(["**/*"]))
+filegroup(
+    name = "all_srcs",
+    srcs = [
+        "//sim:all_srcs",
+        "//sim/cosim:all_srcs",
+    ] + glob([
+        "**/*",
+    ]),
+)
+        """,
+    patches = ["@coralnpu_hw//third_party/coralnpu_mpact:0001-expose-all-sources.patch"],
+    patch_args = ["-p1"],
     )
