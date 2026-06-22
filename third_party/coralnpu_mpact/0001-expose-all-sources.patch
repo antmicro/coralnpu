@@ -18,7 +18,7 @@ index a10a5f5..894e097 100644
 +    ]),
 +)
 diff --git a/sim/BUILD b/sim/BUILD
-index 3f3d775..489018f 100644
+index 3f3d775..d09362c 100644
 --- a/sim/BUILD
 +++ b/sim/BUILD
 @@ -18,6 +18,15 @@ load("@com_google_mpact-sim//mpact/sim/decoder:mpact_sim_isa.bzl", "mpact_bin_fm
@@ -37,6 +37,14 @@ index 3f3d775..489018f 100644
  
  cc_library(
      name = "coralnpu_state",
+@@ -29,7 +38,6 @@ cc_library(
+     ],
+     copts = [
+         "-O3",
+-        "-ffp-model=strict",
+         "-fprotect-parens",
+     ],
+     deps = [
 diff --git a/sim/coralnpu_base.isa b/sim/coralnpu_base.isa
 index dc3ab6f..314be9b 100644
 --- a/sim/coralnpu_base.isa
