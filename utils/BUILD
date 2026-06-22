@@ -20,3 +20,8 @@ py_binary(
     name = "scm_info",
     srcs = ["scm_info.py"],
 )
+
+py_binary(
+    name = "batch_list_process",
+    srcs = ["batch_list_process.py"],
+)

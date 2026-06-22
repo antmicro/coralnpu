@@ -7,7 +7,7 @@ load("@rules_cc//cc/common:cc_info.bzl", "CcInfo")
 load("@rules_hdl//verilator:defs.bzl", "verilator_cc_library")
 load("@rules_hdl//verilog:providers.bzl", "VerilogInfo", "verilog_library")
 load("//rules:utils.bzl", "filter_files_by_extension")
-load("//rules:verilator.bzl", "verilator_model")
+load("//rules:verilator.bzl", "verilator_model", "verilator_batch_uvm")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -96,4 +96,14 @@ verilator_model(
     source_files = [":source_files"],
     source_file_deps = ["//hdl/verilog:dpi_files"],
     coralnpu_mpact_lib = ":coralnpu_cosim_lib_static_archive",
+)
+
+verilator_batch_uvm(
+    name = "uvm_run_regression",
+    model = ":uvm_sim_verilator",
+    tests = [
+        "//tests/cocotb:fptr",
+        "//tests/cocotb/rvv/arithmetics:vmv_v_v_test",
+        "//tests/cocotb/rvv/arithmetics:vfnmadd_vf_test_rmm"
+    ]
 )
