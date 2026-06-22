@@ -339,3 +339,51 @@ verilator_model = rule(
     executable = True,
     toolchains = ["@bazel_tools//tools/cpp:toolchain_type"],
 )
+
+def _verilator_batch_uvm_impl(ctx):
+    batch_list_name = "current_batch.txt"
+    batch_list_file = ctx.actions.declare_file(batch_list_name)
+
+    test_paths = [f.path for f in ctx.files.tests if f.extension in ["elf"]]
+
+    ctx.actions.run(
+        outputs = [batch_list_file],
+        executable = ctx.files._python_script_bin,
+        arguments = [batch_list_file.path] + test_paths
+    )
+
+    return [
+        DefaultInfo(
+            files = depset([batch_list_file]),
+            runfiles = ctx.runfiles(files = [batch_list_file]),
+        ),
+        OutputGroupInfo(
+            all_files = depset([batch_list_file]),
+        ),
+    ]
+
+verilator_batch_uvm = rule(
+    doc = """Performs batch testing of the UVM Verilator model.
+
+    This rule takes a verilog source file and a toplevel module name and
+    builds a verilator model.
+
+    This rule takes a UVM executable and list of targets for batch testing
+
+    Attributes:
+        model: UVM executable target or label
+        tests: List of targets for batch testing
+    """,
+    implementation = _verilator_batch_uvm_impl,
+    attrs = {
+        "model": attr.label(allow_single_file = True),
+        "tests": attr.label_list(allow_files = True),
+        "_python_script_bin": attr.label(
+            default = "//utils:batch_list_process",
+            executable = True,
+            cfg = "exec",
+        )
+    },
+    executable = True,
+    toolchains = ["@bazel_tools//tools/cpp:toolchain_type"],
+)
