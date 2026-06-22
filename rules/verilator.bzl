@@ -215,6 +215,7 @@ def _verilator_model_impl(ctx):
         VERILATOR_ROOT={verilator_root} {verilator} \
             -cc \
             --exe \
+            --main \
             -Mdir {outdir} \
             --top-module {hdl_toplevel} \
             --vpi \
@@ -267,6 +268,7 @@ def _verilator_model_impl(ctx):
             transitive = [
                 depset(ctx.files._verilator),
                 depset(ctx.files._uvm_lib),
+                depset(ctx.files.coralnpu_mpact_lib),
             ],
         ),
         command = script,
