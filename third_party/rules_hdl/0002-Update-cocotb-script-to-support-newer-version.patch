@@ -1,18 +1,3 @@
-From 12a360ec38a25caf623518c40d08445462ba8dd6 Mon Sep 17 00:00:00 2001
-From: Derek Chow <derekjchow@google.com>
-Date: Thu, 27 Feb 2025 20:56:54 +0000
-Subject: [PATCH] Update cocotb script to support newer version.
-
-Target: ddb9634ec4fdd19f2464e5926252b262d0779fab
----
- cocotb/cocotb.bzl                             |  2 +-
- cocotb/cocotb_wrapper.py                      | 20 +++++++++--
- ...-Remove-autodetect-of-VERILATOR_ROOT.patch | 35 +++++++++++++++++++
- .../verilator/verilator.BUILD.bazel           |  8 +++--
- dependency_support/verilator/verilator.bzl    | 10 ++++--
- 5 files changed, 67 insertions(+), 8 deletions(-)
- create mode 100644 dependency_support/verilator/0001-Remove-autodetect-of-VERILATOR_ROOT.patch
-
 diff --git a/cocotb/cocotb.bzl b/cocotb/cocotb.bzl
 index 6cddd81..3a3dd13 100644
 --- a/cocotb/cocotb.bzl
@@ -112,6 +97,31 @@ index 0000000..9022652
 +     warn "-Info: --gdbbt ignored: gdb doesn't seem to be working\n" if $Debug;
 +-- 
 +2.48.1.711.g2feabab25a-goog
+diff --git a/dependency_support/verilator/0002-Clang-ambiguous-overload.patch b/dependency_support/verilator/0002-Clang-ambiguous-overload.patch
+new file mode 100644
+index 0000000..6b855e1
+--- /dev/null
++++ b/dependency_support/verilator/0002-Clang-ambiguous-overload.patch
+@@ -0,0 +1,19 @@
++diff --git a/include/verilated_types.h b/include/verilated_types.h
++index 40847b65e..6d39358c9 100644
++--- a/include/verilated_types.h
+++++ b/include/verilated_types.h
++@@ -2070,7 +2070,13 @@ struct VlNull final {
++         return nullptr;
++     }
++ };
++-inline bool operator==(const void* ptr, VlNull) { return !ptr; }
+++
+++// Clang tends to throw ambiguous operator '==' error, even when other candidates require a cast
+++#if !defined(__clang__)
+++    inline bool operator==(const void* ptr) {
+++        return !ptr;
+++    }
+++#endif
++ 
++ //===================================================================
++ // Verilog class reference container
 diff --git a/dependency_support/verilator/verilator.BUILD.bazel b/dependency_support/verilator/verilator.BUILD.bazel
 index 3c6f975..77860d1 100644
 --- a/dependency_support/verilator/verilator.BUILD.bazel
@@ -153,10 +163,10 @@ index 3c6f975..77860d1 100644
          "include/vltstd/sv_vpi_user.h",
          "include/vltstd/vpi_user.h",
 diff --git a/dependency_support/verilator/verilator.bzl b/dependency_support/verilator/verilator.bzl
-index 376a24f..ac74254 100644
+index 376a24f..c461bb7 100644
 --- a/dependency_support/verilator/verilator.bzl
 +++ b/dependency_support/verilator/verilator.bzl
-@@ -22,7 +22,7 @@ def verilator():
+@@ -22,7 +22,10 @@ def verilator():
          http_archive,
          name = "verilator",
          build_file = Label("@rules_hdl//dependency_support/verilator:verilator.BUILD.bazel"),
@@ -164,9 +174,9 @@ index 376a24f..ac74254 100644
 -        sha256 = "3c2f5338f4b6ce7e2f47a142401acdd18cbf4c5da06092618d6d036c0afef12d",
 -        strip_prefix = "verilator-5.022",
 +        urls = ["https://github.com/verilator/verilator/archive/749b93e4053434590f3ee4358c06f2eb8624872f.tar.gz"],
-+        sha256 = "00cbe645b79f1cd5649bc28b2526e835cc5f88ff3484eb92a6c8539ad16facf7",
 +        strip_prefix = "verilator-749b93e4053434590f3ee4358c06f2eb8624872f",
++        patches = [
++            Label("@rules_hdl//dependency_support/verilator:0002-Clang-ambiguous-overload.patch"),
++        ],
++        patch_args = ["-p1"],
      )
--- 
-2.39.5
-

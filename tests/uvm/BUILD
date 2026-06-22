@@ -68,7 +68,7 @@ filter_files_by_extension(
 
 filter_files_by_extension(
     name = "coralnpu_cosim_lib_static_archive",
-    src = "@coralnpu_mpact_verilator//:coralnpu_cosim_lib_static",
+    src = "@coralnpu-mpact-verilator//sim/cosim:coralnpu_cosim_lib_static",
     extensions = ["a"],
 )
 
@@ -87,7 +87,7 @@ verilator_model(
         "-Wno-fatal",
         "--timing",
         "--timescale 1ns/1ps",
-        "-CFLAGS \"-std=c++17\"",
+        "-CFLAGS \"-std=c++20\"",
     ],
     hdl_toplevel = "coralnpu_tb_top",
     verilog_sources = ["//hdl/chisel/src/coralnpu:rvv_core_mini_verification_axi_cc_library_emit_verilog_single_sv"],
@@ -96,10 +96,4 @@ verilator_model(
     source_files = [":source_files"],
     source_file_deps = ["//hdl/verilog:dpi_files"],
     coralnpu_mpact_lib = ":coralnpu_cosim_lib_static_archive",
-    deps = [
-        "@coralnpu_mpact_verilator//:coralnpu_cosim_lib_static",
-        "@coralnpu_mpact_verilator//:all_srcs",
-    ]
 )
-
-
