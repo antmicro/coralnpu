@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("//rules:coralnpu_v2.bzl", "coralnpu_v2_binary")
+load("//rules:coralnpu_v2.bzl", "coralnpu_v2_binary", "collect_coralnpu_elfs")
 
 cc_library(
     name = "hw_primitives",
@@ -122,3 +122,5 @@ cc_binary(
     visibility = ["//visibility:public"],
     deps = [":core_mini_axi_simulator_rvv"],
 )
+
+collect_coralnpu_elfs(name = "coralnpu_elfs")

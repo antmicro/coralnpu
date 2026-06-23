@@ -13,7 +13,7 @@
 # limitations under the License.
 
 load("//rules:coco_tb.bzl", "cocotb_test_suite")
-load("//rules:coralnpu_v2.bzl", "coralnpu_v2_binary")
+load("//rules:coralnpu_v2.bzl", "coralnpu_v2_binary", "collect_coralnpu_elfs")
 load("//rules:utils.bzl", "generate_cc_arrays")
 load(
     "//tests/cocotb:build_defs.bzl",
@@ -131,3 +131,5 @@ generate_cc_arrays(
     src = "@tflite_micro//tensorflow/lite/micro/examples/hello_world/models:hello_world_int8.tflite",
     out = "hello_world_tflite.h",
 )
+
+collect_coralnpu_elfs(name = "coralnpu_elfs")
