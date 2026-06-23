@@ -340,6 +340,17 @@ verilator_model = rule(
     toolchains = ["@bazel_tools//tools/cpp:toolchain_type"],
 )
 
+def _rlocation_path(ws, f):
+    if f.short_path.startswith("../"):
+        return f.short_path[len("../"):]
+    return ws + "/" + f.short_path
+
+def _label_str(label):
+    s = str(label)
+    if s.startswith("@//"):
+        return s[1:]
+    return s
+
 def _verilator_batch_uvm_impl(ctx):
     model_binary = None
     for f in ctx.files.model:
@@ -349,24 +360,36 @@ def _verilator_batch_uvm_impl(ctx):
 
     riscv_dirs = [f for f in ctx.files.riscv_tests if f.is_directory]
     coralnpu_elfs = [f for f in ctx.files.coralnpu_tests if not f.is_directory]
-    extra_paths = riscv_dirs + coralnpu_elfs
+
+    spike_bin = None
+    for f in ctx.files._spike:
+        if f.basename == "spike":
+            spike_bin = f
+            break
 
     ws = "coralnpu_hw"
     runner = ctx.actions.declare_file(ctx.label.name)
     ctx.actions.symlink(output = runner, target_file = ctx.executable._runner, is_executable = True)
 
+    runfiles = ctx.runfiles(
+        files = riscv_dirs + coralnpu_elfs + ([model_binary] if model_binary else []) + ctx.files._spike,
+        collect_default = True,
+    ).merge(ctx.attr._runner[DefaultInfo].default_runfiles)
+
     return [
         DefaultInfo(
             executable = runner,
-            runfiles = ctx.runfiles(
-                files = extra_paths + ([model_binary] if model_binary else []),
-                collect_default = True,
-            ).merge(ctx.attr._runner[DefaultInfo].default_runfiles),
+            runfiles = runfiles,
         ),
         RunEnvironmentInfo(
             environment = {
-                "UVM_MODEL_RLOCATION": ws + "/" + (model_binary.short_path if model_binary else "MISSING_MODEL"),
-                "UVM_EXTRA_PATHS": "\n".join([ws + "/" + f.short_path for f in extra_paths]),
+                "UVM_MODEL_RLOCATION": _rlocation_path(ws, model_binary) if model_binary else "MISSING_MODEL",
+                "UVM_RISCV_DIRS": "\n".join([_rlocation_path(ws, f) for f in riscv_dirs]),
+                "UVM_CORALNPU_ELFS": "\n".join([
+                    "%s\t%s" % (_rlocation_path(ws, f), _label_str(f.owner))
+                    for f in coralnpu_elfs
+                ]),
+                "UVM_SPIKE_RLOCATION": _rlocation_path(ws, spike_bin) if spike_bin else "",
             },
         ),
     ]
@@ -378,6 +401,10 @@ verilator_batch_uvm_test = rule(
         "model": attr.label(allow_files = True),
         "riscv_tests": attr.label_list(allow_files = True),
         "coralnpu_tests": attr.label_list(allow_files = True),
+        "_spike": attr.label(
+            default = Label("@riscv_isa_sim//:riscv_isa_sim"),
+            allow_files = True,
+        ),
         "_runner": attr.label(
             default = Label("//rules:uvm_batch_runner"),
             executable = True,
