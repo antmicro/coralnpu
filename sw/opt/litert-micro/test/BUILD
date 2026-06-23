@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@coralnpu_hw//rules:coralnpu_v2.bzl", "coralnpu_v2_binary")
+load("@coralnpu_hw//rules:coralnpu_v2.bzl", "coralnpu_v2_binary", "collect_coralnpu_elfs")
 load("@coralnpu_hw//third_party/python:requirements.bzl", "requirement")
 
 package(default_visibility = ["//visibility:public"])
@@ -64,3 +64,8 @@ py_test(
         requirement("numpy"),
     ],
 )
+<<<<<<< HEAD
+=======
+
+collect_coralnpu_elfs(name = "coralnpu_elfs")
+>>>>>>> a6c1bb4f (Add Bazel UVM regression tests)

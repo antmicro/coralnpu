@@ -7,7 +7,7 @@ load("@rules_cc//cc/common:cc_info.bzl", "CcInfo")
 load("@rules_hdl//verilator:defs.bzl", "verilator_cc_library")
 load("@rules_hdl//verilog:providers.bzl", "VerilogInfo", "verilog_library")
 load("//rules:utils.bzl", "filter_files_by_extension")
-load("//rules:verilator.bzl", "verilator_model", "verilator_batch_uvm")
+load("//rules:verilator.bzl", "verilator_model", "verilator_batch_uvm_test")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -98,12 +98,25 @@ verilator_model(
     coralnpu_mpact_lib = ":coralnpu_cosim_lib_static_archive",
 )
 
-verilator_batch_uvm(
+verilator_batch_uvm_test(
     name = "uvm_run_regression",
     model = ":uvm_sim_verilator",
-    tests = [
-        "//tests/cocotb:fptr",
-        "//tests/cocotb/rvv/arithmetics:vmv_v_v_test",
-        "//tests/cocotb/rvv/arithmetics:vfnmadd_vf_test_rmm"
-    ]
+    riscv_tests = ["//third_party/riscv-tests:all_files"],
+    coralnpu_tests = [
+        "//hw_sim:coralnpu_elfs",
+        "//tests/verilator_sim:coralnpu_elfs",
+        "//fpga:coralnpu_elfs",
+        "//tests/cocotb:coralnpu_elfs",
+        "//tests/cocotb/coralnpu_isa:coralnpu_elfs",
+        "//tests/cocotb/exceptions:coralnpu_elfs",
+        "//tests/cocotb/tutorial/tfmicro:coralnpu_elfs",
+        "//tests/npusim_examples:coralnpu_elfs",
+        "//tests/cocotb/freertos_app:coralnpu_elfs",
+        "//tests/cocotb/tutorial:coralnpu_elfs",
+        "//tests/cocotb/tutorial/counters:coralnpu_elfs",
+        "//tests/cocotb/rvv/arithmetics:coralnpu_elfs",
+        "//sw/opt/litert-micro/test:coralnpu_elfs",
+    ],
+    size = "enormous",
+    tags = ["manual"],  # full regression, don't run as part of `bazel test //...`
 )

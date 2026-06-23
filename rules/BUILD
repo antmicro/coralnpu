@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-package(default_visibility = ["//visibility:public"])
+package(defult_visibility = ["//visibility:public"])
 
 exports_files(glob(["*.bzl"]))
 
@@ -24,3 +24,12 @@ exports_files([
     # "@coralnpu_hw//rules:sim_runner.py" to support multi-workspace execution.
     "sim_runner.py",
 ])
+
+py_binary(
+    name = "uvm_batch_runner",
+    srcs = ["uvm_batch_runner.py"],
+    deps = [
+        "//utils:run_uvm_regression",
+        "@bazel_tools//tools/python/runfiles",
+    ],
+)
