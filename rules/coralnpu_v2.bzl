@@ -330,3 +330,23 @@ def coralnpu_v2_binary(
         output_group = "bin_file",
         tags = tags,
     )
+
+def collect_coralnpu_elfs(name, tags = [], visibility = ["//tests/uvm:__pkg__"]):
+    """Aggregates the .elf filegroup of every coralnpu_v2_binary in this package.
+
+    Args:
+      name: The name of the generated filegroup.
+      tags: build tags.
+      visibility: visibility of the generated filegroup.
+    """
+    elfs = [
+        "{}.elf".format(r["name"])
+        for r in native.existing_rules().values()
+        if r["kind"] == "_coralnpu_v2_binary"
+    ]
+    native.filegroup(
+        name = name,
+        srcs = elfs,
+        tags = tags,
+        visibility = visibility,
+    )

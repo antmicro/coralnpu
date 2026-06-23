@@ -14,14 +14,17 @@
 
 package(default_visibility = ["//visibility:public"])
 
-load("@rules_python//python:defs.bzl", "py_binary")
+load("@rules_python//python:defs.bzl", "py_binary", "py_library")
+load("//third_party/python:requirements.bzl", "requirement")
 
 py_binary(
     name = "scm_info",
     srcs = ["scm_info.py"],
 )
 
-py_binary(
-    name = "batch_list_process",
-    srcs = ["batch_list_process.py"],
+py_library(
+    name = "run_uvm_regression",
+    srcs = ["run_uvm_regression.py"],
+    imports = ["."],
+    deps = [requirement("pyelftools")],
 )
