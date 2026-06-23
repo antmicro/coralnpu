@@ -341,49 +341,48 @@ verilator_model = rule(
 )
 
 def _verilator_batch_uvm_impl(ctx):
-    batch_list_name = "current_batch.txt"
-    batch_list_file = ctx.actions.declare_file(batch_list_name)
+    model_binary = None
+    for f in ctx.files.model:
+        if not f.path.endswith(".log"):
+            model_binary = f
+            break
 
-    test_paths = [f.path for f in ctx.files.tests if f.extension in ["elf"]]
+    riscv_dirs = [f for f in ctx.files.riscv_tests if f.is_directory]
+    coralnpu_elfs = [f for f in ctx.files.coralnpu_tests if not f.is_directory]
+    extra_paths = riscv_dirs + coralnpu_elfs
 
-    ctx.actions.run(
-        outputs = [batch_list_file],
-        executable = ctx.files._python_script_bin,
-        arguments = [batch_list_file.path] + test_paths
-    )
+    ws = "coralnpu_hw"
+    runner = ctx.actions.declare_file(ctx.label.name)
+    ctx.actions.symlink(output = runner, target_file = ctx.executable._runner, is_executable = True)
 
     return [
         DefaultInfo(
-            files = depset([batch_list_file]),
-            runfiles = ctx.runfiles(files = [batch_list_file]),
+            executable = runner,
+            runfiles = ctx.runfiles(
+                files = extra_paths + ([model_binary] if model_binary else []),
+                collect_default = True,
+            ).merge(ctx.attr._runner[DefaultInfo].default_runfiles),
         ),
-        OutputGroupInfo(
-            all_files = depset([batch_list_file]),
+        RunEnvironmentInfo(
+            environment = {
+                "UVM_MODEL_RLOCATION": ws + "/" + (model_binary.short_path if model_binary else "MISSING_MODEL"),
+                "UVM_EXTRA_PATHS": "\n".join([ws + "/" + f.short_path for f in extra_paths]),
+            },
         ),
     ]
 
-verilator_batch_uvm = rule(
-    doc = """Performs batch testing of the UVM Verilator model.
-
-    This rule takes a verilog source file and a toplevel module name and
-    builds a verilator model.
-
-    This rule takes a UVM executable and list of targets for batch testing
-
-    Attributes:
-        model: UVM executable target or label
-        tests: List of targets for batch testing
-    """,
+verilator_batch_uvm_test = rule(
+    doc = """Performs batch testing of the UVM Verilator model.""",
     implementation = _verilator_batch_uvm_impl,
     attrs = {
-        "model": attr.label(allow_single_file = True),
-        "tests": attr.label_list(allow_files = True),
-        "_python_script_bin": attr.label(
-            default = "//utils:batch_list_process",
+        "model": attr.label(allow_files = True),
+        "riscv_tests": attr.label_list(allow_files = True),
+        "coralnpu_tests": attr.label_list(allow_files = True),
+        "_runner": attr.label(
+            default = Label("//rules:uvm_batch_runner"),
             executable = True,
-            cfg = "exec",
-        )
+            cfg = "target",
+        ),
     },
-    executable = True,
-    toolchains = ["@bazel_tools//tools/cpp:toolchain_type"],
+    test = True,
 )

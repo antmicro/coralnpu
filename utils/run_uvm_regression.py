@@ -113,6 +113,19 @@ TIMEOUT_MAP = {
     "//examples:coralnpu_v2_rvv_add_intrinsic": 200000,
 }
 
+
+def format_batch_entry(elf: str, tohost: int, entry: int, timeout: int,
+                       spike_log: str, target: str) -> str:
+    return "%s %08x %08x %d %s %s\n" % (elf, tohost, entry, timeout, spike_log,
+                                        target)
+
+
+def is_riscv_test_file(fname: str) -> bool:
+    # heuristic: riscv-tests binaries start with rv32, dump files are
+    # objdump output sitting alongside them, not test binaries
+    return not fname.endswith('.dump') and fname.startswith('rv32')
+
+
 # Spike simulation parameters
 SPIKE_MEMORY_REGIONS = [
     (0x0, 0x2000),  # ITCM
@@ -431,10 +444,7 @@ def get_riscv_test_artifacts() -> List[Tuple[str, str]]:
 
         for root, _, files in os.walk(d):
             for f in files:
-                if f.endswith('.dump'):
-                    continue
-                # heuristic: starts with rv32
-                if f.startswith('rv32'):
+                if is_riscv_test_file(f):
                     full_path = os.path.join(root, f)
                     # Construct a pseudo-target name
                     # e.g. //third_party/riscv-tests:rv32ui-p-add
@@ -714,7 +724,9 @@ def run_full_regression(tests_to_run: List[Tuple[str, str]], spike_bin: str,
         with open(batch_list_path, 'w') as f_list:
             for t in pending_targets:
                 info = test_info_map[t]
-                f_list.write(f"{info['elf']} {info['tohost']:08x} {info['entry']:08x} {info['timeout']} {info['spike']} {t}\n")
+                f_list.write(format_batch_entry(info['elf'], info['tohost'],
+                                                info['entry'], info['timeout'],
+                                                info['spike'], t))
 
         cmd = [
             "make", "-C", "tests/uvm", "run", 

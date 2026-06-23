@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+load("@rules_python//python:defs.bzl", "py_binary")
+
 exports_files(glob(["*.bzl"]))
 package(default_visibility = ["//visibility:public"])
 
@@ -20,3 +22,12 @@ exports_files([
     "chisel_test_runner.sh",
     "vcs_model_wrapper.sh.template",
 ])
+
+py_binary(
+    name = "uvm_batch_runner",
+    srcs = ["uvm_batch_runner.py"],
+    deps = [
+        "//utils:run_uvm_regression",
+        "@bazel_tools//tools/python/runfiles",
+    ],
+)

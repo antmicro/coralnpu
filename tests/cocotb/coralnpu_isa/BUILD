@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("//rules:coralnpu_v2.bzl", "coralnpu_v2_binary")
+load("//rules:coralnpu_v2.bzl", "coralnpu_v2_binary", "collect_coralnpu_elfs")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -33,3 +33,5 @@ filegroup(
         "perf_counters.elf",
     ],
 )
+
+collect_coralnpu_elfs(name = "coralnpu_elfs")
