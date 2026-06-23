@@ -1,14 +1,10 @@
 #!/usr/bin/env python3
 #
-# Drives the UVM batch regression: builds the REGRESSION_LIST batch file,
-# launches the Verilator/UVM model, and determines pass/fail from its
-# REGRESSION_SUMMARY line (the model process always exits 0 regardless of
-# UVM pass/fail, so the exit code alone can't be trusted).
-#
-# Env vars (set by the verilator_batch_uvm_test rule via RunEnvironmentInfo):
-#   UVM_MODEL_RLOCATION: rlocation path of the model binary.
-#   UVM_EXTRA_PATHS: newline-separated rlocation paths of riscv-tests
-#     directories and coralnpu_v2_binary ELFs.
+# Env vars (set by the verilator_batch_uvm_test rule):
+#   UVM_MODEL_RLOCATION: rlocation path of the model binary
+#   UVM_RISCV_DIRS: newline-separated rlocation paths of riscv-tests directories
+#   UVM_CORALNPU_ELFS: newline-separated "<rlocation path>\t<bazel label>" pairs for individual coralnpu_v2_binary ELFs
+#   UVM_SPIKE_RLOCATION: rlocation path of the spike binary, if any
 
 import os
 import re
@@ -20,7 +16,10 @@ from bazel_tools.tools.python.runfiles import runfiles
 
 from run_uvm_regression import (
     DENYLIST,
+    SPIKE_DENYLIST,
+    TIMEOUT_MAP,
     format_batch_entry,
+    generate_spike_log,
     get_entry_point,
     get_tohost_addr,
     is_riscv_test_file,
@@ -29,42 +28,39 @@ from run_uvm_regression import (
 SUMMARY_RE = re.compile(r"\[REGRESSION_SUMMARY\] (\d+)/(\d+) tests failed\.")
 
 
-def label_for_coralnpu_elf(path):
-    marker = "/coralnpu_hw/"
-    idx = path.rfind(marker)
-    if idx == -1 or not path.endswith(".elf"):
-        return None
-    rel = path[idx + len(marker):-len(".elf")]
-    pkg, _, name = rel.rpartition("/")
-    return "//%s:%s" % (pkg, name)
-
-
-def write_entry(f, path, seen, label=None):
-    if path in seen:
-        return
-    if label is not None and label in DENYLIST:
+def write_entry(f, path, label, seen, spike_bin=None, spike_dir=None):
+    if path in seen or label in DENYLIST:
         return
     seen.add(path)
     entry = get_entry_point(path)
     tohost = get_tohost_addr(path)
     if tohost is None:
         tohost = 0xFFFFFFFF
-    f.write(format_batch_entry(path, tohost, entry, 100000, "NONE", path))
+
+    spike_log = "NONE"
+    if spike_bin and label not in SPIKE_DENYLIST:
+        candidate = os.path.join(spike_dir, "%d.spike.log" % len(seen))
+        if generate_spike_log(spike_bin, path, candidate, entry):
+            spike_log = candidate
+
+    timeout = TIMEOUT_MAP.get(label, 100000)
+    f.write(format_batch_entry(path, tohost, entry, timeout, spike_log, path))
 
 
-def build_batch_file(out_path, paths):
+def build_batch_file(out_path, riscv_dirs, coralnpu_elfs, spike_bin=None):
     seen = set()
+    spike_dir = tempfile.mkdtemp(prefix="uvm_spike_") if spike_bin else None
     with open(out_path, "w") as f:
-        for p in paths:
-            if os.path.isdir(p):
-                for root, _, files in os.walk(p):
-                    for fname in sorted(files):
-                        if not is_riscv_test_file(fname):
-                            continue
-                        label = "//third_party/riscv-tests:%s" % fname
-                        write_entry(f, os.path.join(root, fname), seen, label)
-            elif os.path.isfile(p):
-                write_entry(f, p, seen, label_for_coralnpu_elf(p))
+        for d in riscv_dirs:
+            for root, _, files in os.walk(d):
+                for fname in sorted(files):
+                    if not is_riscv_test_file(fname):
+                        continue
+                    label = "//third_party/riscv-tests:%s" % fname
+                    write_entry(f, os.path.join(root, fname), label, seen,
+                               spike_bin, spike_dir)
+        for path, label in coralnpu_elfs:
+            write_entry(f, path, label, seen, spike_bin, spike_dir)
 
 
 def main():
@@ -75,16 +71,27 @@ def main():
     if not model or not os.path.isfile(model):
         sys.exit("ERROR: model not found: %s" % model_rloc)
 
-    extra_paths = [
+    riscv_dirs = [
         r.Rlocation(p)
-        for p in os.environ.get("UVM_EXTRA_PATHS", "").splitlines()
+        for p in os.environ.get("UVM_RISCV_DIRS", "").splitlines()
         if p
     ]
+    coralnpu_elfs = []
+    for line in os.environ.get("UVM_CORALNPU_ELFS", "").splitlines():
+        rloc, label = line.split("\t")
+        coralnpu_elfs.append((r.Rlocation(rloc), label))
+
+    spike_bin = None
+    spike_rloc = os.environ.get("UVM_SPIKE_RLOCATION")
+    if spike_rloc:
+        spike_bin = r.Rlocation(spike_rloc)
+        if not spike_bin or not os.path.isfile(spike_bin):
+            sys.exit("ERROR: spike binary not found: %s" % spike_rloc)
 
     fd, batch_path = tempfile.mkstemp(prefix="uvm_batch_", suffix=".txt")
     os.close(fd)
     try:
-        build_batch_file(batch_path, extra_paths)
+        build_batch_file(batch_path, riscv_dirs, coralnpu_elfs, spike_bin)
 
         print("Batch list:")
         with open(batch_path) as f:
