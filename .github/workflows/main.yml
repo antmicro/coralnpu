@@ -7,43 +7,8 @@ on:
       - "*"
     branches:
       - main
-env:
-  CI_VERILATOR_VERSION: v5.048
 
 jobs:
-  build-coralnpu:
-    runs-on: ubuntu-22.04
-    if: false
-    permissions:
-      contents: write
-    timeout-minutes: 30
-    steps:
-      - uses: actions/checkout@v5
-        with:
-          fetch-depth: 1
-          #ssh-key: ${{ secrets.ACTIONS_DEPLOY_KEY }}
-      - uses: bazel-contrib/setup-bazel@0.15.0
-        with:
-          bazelisk-version: 1.29.0
-          # Avoid downloading Bazel every time. bazelisk-cache: true
-          # Store build cache per workflow.
-          disk-cache: ${{ github.workflow }}
-          # Share repository cache between workflows.
-          repository-cache: true
-      - name: build
-        run: bazel build //hdl/chisel/src/coralnpu:rvv_core_mini_axi_cc_library_emit_verilog
-      - uses: actions/upload-artifact@v4
-        with:
-          name: RvvCoreMiniAxi
-          path: |
-            ${{ github.workspace }}/bazel-bin/hdl/chisel/src/coralnpu/RvvCoreMiniAxi.sv
-            ${{ github.workspace }}/bazel-bin/hdl/chisel/src/coralnpu/RvvCoreMiniAxi.zip
-      - uses: softprops/action-gh-release@v2
-        if: github.ref_type == 'tag'
-        with:
-          files: |
-            ${{ github.workspace }}/bazel-bin/hdl/chisel/src/coralnpu/RvvCoreMiniAxi.sv
-            ${{ github.workspace }}/bazel-bin/hdl/chisel/src/coralnpu/RvvCoreMiniAxi.zip
   build-verilator:
     runs-on: ubuntu-24.04
     permissions:
@@ -73,7 +38,7 @@ jobs:
           name: verilator
           path: |
             ${{ env.CI_VERILATOR_INSTALL_DIR }}
-  simulate:
+  coralnpu-simulate:
     runs-on: ubuntu-24.04
     permissions:
       contents: write
@@ -85,10 +50,12 @@ jobs:
       CI_RUNS_ON: ubuntu-24.04
       CI_OS_NAME: linux
       CI_TMPDIR: /tmp
+      CI_CORALNPU_MPACT_COMMIT: 61a6317aca4de62a4862181d24dc22a1795bda43
     steps:
       - uses: actions/checkout@v5
         with:
           fetch-depth: 1
+          ssh-key: ${{ secrets.ACTIONS_DEPLOY_KEY }}
       - uses: bazel-contrib/setup-bazel@0.15.0
         with:
           # Avoid downloading Bazel every time.
@@ -105,14 +72,14 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y git gcc autoconf bc bison build-essential ca-certificates ccache clang curl device-tree-compiler flex fuse3 gawk git gnupg mold python-is-python3 python3 python3-full python3-pip python3-pyelftools python3-setuptools python3-venv python3-venv srecord unzip xxd zip openjdk-17-jre z3
-      - name: Clone UVM 1.2
+      - name: Clone UVM-1.2
         run: |
           git clone https://github.com/chipsalliance/uvm-verilator.git -b uvm-1.2 ${{ env.CI_TMPDIR }}/uvm-verilator
           git -C ${{ env.CI_TMPDIR }}/uvm-verilator cherry-pick -n --strategy=recursive -X theirs 5a37baacfed0722b523b05decc9b94fe3e9efbe4
-      - name: Clone coralnpu-mpact
+      - name: Clone CoralNPU-mpact
         run: |
           git clone https://github.com/google-coral/coralnpu-mpact.git ${{ env.CI_TMPDIR }}/coralnpu-mpact
-          git -C ${{ env.CI_TMPDIR }}/coralnpu-mpact checkout 61a6317aca4de62a4862181d24dc22a1795bda43
+          git -C ${{ env.CI_TMPDIR }}/coralnpu-mpact checkout ${{ env.CI_CORALNPU_MPACT_COMMIT }}
       - name: Generate RTL and run simulation
         run: |
           chmod +x -R ${{ env.CI_TMPDIR }}/verilator_install/bin
