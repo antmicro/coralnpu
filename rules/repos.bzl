@@ -146,13 +146,6 @@ def coralnpu_repos2():
     )
 
     http_archive(
-        name = "rules_foreign_cc",
-        sha256 = "2a4d07cd64b0719b39a7c12218a3e507672b82a97b98c6a89d38565894cf7c51",
-        strip_prefix = "rules_foreign_cc-0.9.0",
-        url = "https://github.com/bazelbuild/rules_foreign_cc/archive/refs/tags/0.9.0.tar.gz",
-    )
-
-    http_archive(
         name = "llvm_firtool",
         urls = ["https://repo1.maven.org/maven2/org/chipsalliance/llvm-firtool/1.114.0/llvm-firtool-1.114.0.jar"],
         build_file = "@coralnpu_hw//third_party/llvm-firtool:BUILD.bazel",
@@ -332,6 +325,15 @@ def mpact_repos():
     )
 
 def uvm_verilator_repos():
+    # Current master as of 24.06.2026
+    verilator_commit = "7752625f49aae7886ea44b0bf98add5bcbff2eab"
+    git_repository(
+        name = "verilator-native",
+        remote = "https://github.com/verilator/verilator",
+        commit = verilator_commit,
+        build_file = "@coralnpu_hw//third_party:verilator.BUILD",
+    )
+
     git_repository(
         name = "uvm-verilator",
         remote = "https://github.com/chipsalliance/uvm-verilator",
