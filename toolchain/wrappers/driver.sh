@@ -15,7 +15,6 @@
 
 PROG=$(basename "$0")
 DRIVER_DIR=$(dirname "$0")
-PREFIX="riscv32-unknown-elf"
 
 # Find the bzlmod canonical repo directory name.
 _resolve_toolchain() {
@@ -56,6 +55,13 @@ if [[ -z "${TOOLCHAIN}" ]]; then
     echo "$0: cannot find toolchain_coralnpu_v2 under ${ROOT}/external" 1>&2
     exit 1
 fi
+
+if [[ -f "${ROOT}/external/${TOOLCHAIN}/bin/riscv64-unknown-elf-gcc" ]]; then
+    PREFIX="riscv64-unknown-elf"
+else
+    PREFIX="riscv32-unknown-elf"
+fi
+
 exec "${ROOT}/external/${TOOLCHAIN}/bin/${PREFIX}-${PROG}" \
     "${ARGS[@]}" \
     "$@" \

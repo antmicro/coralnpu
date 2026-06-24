@@ -124,7 +124,7 @@ int main() {
   asm volatile("csrs mstatus, %0" ::"r"(1u << 3));
 
   // 5. Spin-wait for the ISR to set timer_fired
-  for (volatile int i = 0; i < 10000; i++) {
+  for (volatile int i = 0; i < 10000; i = i + 1) {
     if (timer_fired) break;
   }
 

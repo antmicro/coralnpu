@@ -19,3 +19,9 @@ tests/uvm/vc_hdrs.h
 __pycache__
 # downloaded bitstreams
 fpga/bitstreams
+# toolchain builds
+toolchain/build_scripts/rv*_out
+toolchain/build_scripts/riscv-gnu-toolchain
+toolchain/build_scripts/llvm-project
+toolchain/build_scripts/libgloss-htif
+toolchain/build_scripts/*.tar.*

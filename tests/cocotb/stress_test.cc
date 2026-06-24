@@ -17,7 +17,7 @@ int main(int argc, char** argv) {
       itcm_accum += itcm_vec[i];
       dtcm_accum += dtcm_vec[i];
       extmem_accum += extmem_vec[i];
-      extmem_vec[i]++;
+      extmem_vec[i] = extmem_vec[i] + 1;
     }
   }
   return itcm_accum + dtcm_accum + extmem_accum;

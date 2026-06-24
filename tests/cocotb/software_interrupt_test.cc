@@ -78,7 +78,7 @@ int main() {
 
   // 4. Spin-wait for the ISR to set sw_fired.
   // The interrupt will be triggered externally by writing to MSIP.
-  for (volatile int i = 0; i < 100000; i++) {
+  for (volatile int i = 0; i < 100000; i = i + 1) {
     if (sw_fired) break;
   }
 

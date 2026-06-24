@@ -129,6 +129,9 @@ def _impl(ctx):
     )
 
     tc_root = ctx.file._toolchain_root.dirname
+    prefix = ctx.attr.toolchain_prefix
+    ver = ctx.attr.gcc_version
+    clang_ver = ctx.attr.clang_version
     includes_feature = feature(
         name = "includes",
         enabled = True,
@@ -140,15 +143,17 @@ def _impl(ctx):
                         flags = [
                             "-nostdinc",
                             "-isystem",
-                            tc_root + "/riscv32-unknown-elf/include/c++/15.1.0",
+                            tc_root + "/" + prefix + "/include/c++/" + ver,
                             "-isystem",
-                            tc_root + "/riscv32-unknown-elf/include/c++/15.1.0/backward",
+                            tc_root + "/" + prefix + "/include/c++/" + ver + "/backward",
                             "-isystem",
-                            tc_root + "/riscv32-unknown-elf/include/c++/15.1.0/riscv32-unknown-elf",
+                            tc_root + "/" + prefix + "/include/c++/" + ver + "/" + prefix,
                             "-isystem",
-                            tc_root + "/lib/gcc/riscv32-unknown-elf/15.1.0/include",
+                            tc_root + "/lib/gcc/" + prefix + "/" + ver + "/include",
                             "-isystem",
-                            tc_root + "/riscv32-unknown-elf/include",
+                            tc_root + "/lib/clang/" + clang_ver + "/include",
+                            "-isystem",
+                            tc_root + "/" + prefix + "/include",
                         ],
                     ),
                 ],
@@ -156,13 +161,15 @@ def _impl(ctx):
         ],
     )
 
+    arch = "rv64imf_zve32f_zicsr_zifencei_zbb" if ctx.attr.is_rv64 else "rv32imf_zve32f_zicsr_zifencei_zbb"
+    abi = "lp64" if ctx.attr.is_rv64 else "ilp32"
     architecture_flag_set = flag_set(
-        actions = all_compile_actions,
+        actions = all_compile_actions + all_link_actions,
         flag_groups = [
             flag_group(
                 flags = [
-                    "-march=rv32imf_zve32f_zicsr_zifencei_zbb",
-                    "-mabi=ilp32",
+                    "-march=" + arch,
+                    "-mabi=" + abi,
                     "-mcmodel=medany",
                     "-nostdlib",
                 ],
@@ -376,16 +383,18 @@ def _impl(ctx):
         ],
     )
 
+    target_cpu = "riscv64" if ctx.attr.is_rv64 else "riscv32"
+    abi = "lp64" if ctx.attr.is_rv64 else "ilp32"
     return cc_common.create_cc_toolchain_config_info(
         ctx = ctx,
         toolchain_identifier = "coralnpu_v2_toolchain",
         host_system_name = "local",
         target_system_name = "coralnpu_v2",
-        target_cpu = "riscv32",
+        target_cpu = target_cpu,
         target_libc = "newlib",
         compiler = "clang",
-        abi_version = "ilp32",
-        abi_libc_version = "ilp32",
+        abi_version = abi,
+        abi_libc_version = abi,
         features = [
             includes_feature,
             printf_float_feature,
@@ -406,6 +415,10 @@ coralnpu_v2_cc_toolchain_config = rule(
     implementation = _impl,
     attrs = {
         "semihosting": attr.bool(),
+        "toolchain_prefix": attr.string(default = "riscv64-unknown-elf"),
+        "gcc_version": attr.string(default = "16.1.0"),
+        "clang_version": attr.string(default = "20"),
+        "is_rv64": attr.bool(default = False),
         "_toolchain_root": attr.label(
             default = "@toolchain_coralnpu_v2//:BUILD.bazel",
             allow_single_file = True,

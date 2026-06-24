@@ -170,10 +170,10 @@ filegroup(
     srcs = glob(["**"]),
 )
 """,
-    sha256 = "c9c85f8361e9d02d64474c51e3b3730ba09807cf4610d6d002c49a270458b49c",
-    strip_prefix = "toolchain_kelvin_v2",
+    sha256 = "de06690c2da5cd783d76b2998208bd4db4dcdc22dec146c7b0a5ee1af40d3db7",
+    strip_prefix = "toolchain_coralnpu_v2",
     urls = [
-        "https://storage.googleapis.com/shodan-public-artifacts/toolchain_kelvin_tar_files/toolchain_kelvin_v2-2025-09-11.tar.gz",
+        "https://storage.googleapis.com/shodan-public-artifacts/toolchain_coralnpu_v2-2026-06-29.tar.xz",
     ],
 )
 
