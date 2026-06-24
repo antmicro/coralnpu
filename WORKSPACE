@@ -155,6 +155,25 @@ python_register_toolchains(
 
 coralnpu_repos2()
 
+load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
+http_archive(
+    name = "rules_foreign_cc",
+    sha256 = "8e5605dc2d16a4229cb8fbe398514b10528553ed4f5f7737b663fdd92f48e1c2",
+    strip_prefix = "rules_foreign_cc-0.13.0",
+    url = "https://github.com/bazel-contrib/rules_foreign_cc/releases/download/0.13.0/rules_foreign_cc-0.13.0.tar.gz",
+    patches = [
+        "@coralnpu_hw//third_party/rules_foreign_cc:rules-foreign-cc-out-data-files.patch",
+    ],
+    patch_args = ["-p1"],
+)
+
+load("@rules_foreign_cc//foreign_cc:repositories.bzl", "rules_foreign_cc_dependencies")
+
+# This sets up some common toolchains for building targets. For more details, please see
+# https://bazelbuild.github.io/rules_foreign_cc/0.13.0/flatten.html#rules_foreign_cc_dependencies
+rules_foreign_cc_dependencies()
+
+
 # Scala setup
 load("@io_bazel_rules_scala//:scala_config.bzl", "scala_config")
 

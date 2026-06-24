@@ -7,70 +7,6 @@ load("@rules_cc//cc/common:cc_info.bzl", "CcInfo")
 load("@rules_hdl//verilator:defs.bzl", "verilator_cc_library")
 load("@rules_hdl//verilog:providers.bzl", "VerilogInfo", "verilog_library")
 
-def _collect_verilog_files(dep):
-    transitive_srcs = depset([], transitive = [dep[VerilogInfo].dag])
-    all_srcs = [verilog_info_struct.srcs
-                for verilog_info_struct in transitive_srcs.to_list()]
-    all_files = [src for sub_tuple in all_srcs for src in sub_tuple]
-    return all_files
-
-def _verilator_testbench_test_impl(ctx):
-    all_files = _collect_verilog_files(ctx.attr.deps)
-
-    verilator_binary_output = ctx.actions.declare_file(ctx.attr.module)
-    verilator_objdir_output = ctx.actions.declare_directory(
-        ctx.attr.module + ".obj_dir")
-
-    verilog_files = []
-    for file in all_files:
-        if file.extension in ["dat", "mem"]:
-            continue
-        verilog_files.append(file)
-
-    command = [
-        "verilator",
-        "--binary",
-    ]
-    verilog_dirs = dict()
-    for file in verilog_files:
-        verilog_dirs[file.dirname] = None
-    for verilog_file in verilog_files:
-        command.append(verilog_file.path)
-    command.append("-Mdir")
-    command.append(verilator_objdir_output.path)
-    command.append("-o")
-    command.append(verilator_binary_output.path)
-
-    ctx.actions.run_shell(
-        outputs=[verilator_objdir_output, verilator_binary_output],
-        inputs=verilog_files,
-        command = " ".join(command),
-        use_default_shell_env = True,
-    )
-
-    return [DefaultInfo(runfiles=ctx.runfiles(files=[verilator_objdir_output]),
-                        executable=verilator_binary_output)]
-
-_verilator_testbench_test = rule(
-    _verilator_testbench_test_impl,
-    attrs = {
-        "srcs": attr.label_list(allow_files = True),
-        "deps": attr.label(
-            doc = "The verilog target to create a test bench for.",
-            providers = [VerilogInfo],
-            mandatory = True,
-        ),
-        "module": attr.string(
-            doc = "The name of the verilog module to verilate.",
-            mandatory = True,
-        ),
-    },
-    test = True,
-)
-
-def verilator_testbench_test(name, tags=[], **kwargs):
-    _verilator_testbench_test(name = name, tags = ["verilator"] + tags, **kwargs)
-
 
 # Number of CPUs reserved per Verilate action in Bazel's local scheduler.
 # Sourced from `nproc` at workspace-fetch time so we don't oversubscribe
@@ -202,7 +138,7 @@ def _verilator_model_impl(ctx):
     make_log = ctx.actions.declare_file(outdir_name + "/make.log")
     outdir = output_file.dirname
 
-    verilator_root = "$PWD/{}.runfiles/coralnpu_hw/external/verilator".format(ctx.executable._verilator_bin.path)
+    verilator_root = "$PWD/{}".format(ctx.files._verilator_lib[0].dirname)
     uvm_lib_path = "$PWD/{}".format(ctx.files._uvm_lib[0].dirname)
     coralnpu_mpact_lib_path = "$PWD/{}".format(ctx.files.coralnpu_mpact_lib[0].path)
 
@@ -210,6 +146,18 @@ def _verilator_model_impl(ctx):
     verilog_sources_str = " ".join(["$PWD/" + p if not p.startswith("/") else p for p in verilog_paths])
 
     include_dirs_str = " ".join(["-I" + p.path for p in ctx.files.include_dirs])
+
+    verilator_bin = None
+    for f in ctx.files._verilator:
+        if f.basename == "verilator_bin":
+            verilator_bin = f
+            break
+
+    verilator_include_dir = None
+    for f in ctx.files._verilator:
+        if f.basename == "include":
+            verilator_include_dir = f
+            break
 
     verilator_cmd = " ".join("""
         VERILATOR_ROOT={verilator_root} {verilator} \
@@ -233,8 +181,8 @@ def _verilator_model_impl(ctx):
             {dpi_srcs} \
             {verilog_sources}
     """.strip().split("\n")).format(
-        verilator = ctx.executable._verilator_bin.path,
-        verilator_root = verilator_root,
+        verilator_root = "$PWD/{}".format(verilator_include_dir.dirname),
+        verilator = verilator_bin.path,
         outdir = outdir,
         hdl_toplevel = hdl_toplevel,
         include_dirs_str = include_dirs_str,
@@ -262,7 +210,7 @@ def _verilator_model_impl(ctx):
 
     ctx.actions.run_shell(
         outputs = [output_file, make_log],
-        tools = ctx.files._verilator_bin,
+        tools = depset([verilator_bin]),
         inputs = depset(
             [f for f in all_inputs_dict.values()],
             transitive = [
@@ -318,15 +266,13 @@ verilator_model = rule(
             default = "@coralnpu_hw//rules:default.vlt.tpl",
             allow_single_file = True,
         ),
-        "_verilator": attr.label(
-            default = "@verilator//:verilator",
-            executable = True,
-            cfg = "exec",
+        "_verilator_lib": attr.label(
+            default = "@verilator-native//:all_srcs",
+            allow_files = True,
         ),
-        "_verilator_bin": attr.label(
-            default = "@verilator//:verilator_bin",
-            executable = True,
-            cfg = "exec",
+        "_verilator": attr.label(
+            default = Label("@verilator-native//:verilator"),
+            allow_files = True,
         ),
         "_uvm_lib": attr.label(
             default = "@uvm-verilator//:all_srcs",
