@@ -1,4 +1,4 @@
-name: CoralNPU RTL
+name: CoralNPU RTL Build
 on:
   workflow_dispatch:
   pull_request:

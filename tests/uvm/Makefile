@@ -112,7 +112,7 @@ SIM_COMPILE_OPTS = \
 	-I"$(UVM)/src/" \
 	"$(UVM)/src/uvm_pkg.sv" \
 	"$(UVM)/src/dpi/uvm_dpi.cc" \
-  	"$(MPACT_LIB_PATH)" \
+	"$(MPACT_LIB_PATH)" \
 	-Mdir $(BUILD_DIR) \
 	-o simv
 SIM_EXEC = $(BUILD_DIR)/simv
