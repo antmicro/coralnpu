@@ -87,7 +87,6 @@ verilator_model(
         "-Wno-fatal",
         "--timing",
         "--timescale 1ns/1ps",
-        "-CFLAGS \"-std=c++20\"",
     ],
     hdl_toplevel = "coralnpu_tb_top",
     verilog_sources = ["//hdl/chisel/src/coralnpu:rvv_core_mini_verification_axi_cc_library_emit_verilog_single_sv"],
