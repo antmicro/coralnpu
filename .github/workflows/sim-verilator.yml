@@ -97,7 +97,7 @@ jobs:
     runs-on: ubuntu-24.04
     permissions:
       contents: write
-    timeout-minutes: 60
+    timeout-minutes: 120
     env:
       CI_BUILD_STAGE_NAME: build
       CI_RUNS_ON: ubuntu-24.04

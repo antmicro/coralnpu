@@ -330,8 +330,7 @@ def mpact_repos():
     )
 
 def uvm_verilator_repos():
-    # Current master as of 24.06.2026
-    verilator_commit = "7752625f49aae7886ea44b0bf98add5bcbff2eab"
+    verilator_commit = "749b93e4053434590f3ee4358c06f2eb8624872f"
     git_repository(
         name = "verilator-native",
         remote = "https://github.com/verilator/verilator",
