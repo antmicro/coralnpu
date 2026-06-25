@@ -1,4 +1,5 @@
 load("@rules_foreign_cc//foreign_cc:configure.bzl", "configure_make")
+load("@coralnpu_hw//rules:verilator_defs.bzl", "VERILATOR_INCLUDE_FILES")
 
 filegroup(
     name = "all_srcs",
@@ -18,6 +19,7 @@ configure_make(
     out_bin_dir = "bin",
     out_binaries = ["verilator_bin"],
     out_include_dir = "",
+    out_data_files = ["share/verilator/include/{}".format(p) for p in VERILATOR_INCLUDE_FILES],
     visibility = ["//visibility:public"],
     env = {
         # Disable ccache in the sandbox
