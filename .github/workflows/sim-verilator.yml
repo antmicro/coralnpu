@@ -7,7 +7,6 @@ on:
       - "*"
     branches:
       - main
-      - 98486-add-verilator-simulation
 
 jobs:
   build-verilator:
@@ -89,6 +88,45 @@ jobs:
           export CORALNPU_MPACT=${{ env.CI_TMPDIR }}/coralnpu-mpact
           bazel build //hdl/chisel/src/coralnpu:rvv_core_mini_axi_cc_library_emit_verilog
           python3 utils/run_uvm_regression.py --simulator=verilator
+      - uses: actions/upload-artifact@v4
+        with:
+          name: uvm_regression_result.zip
+          path: |
+            ${{ github.workspace }}/uvm_regression_*.zip
+  coralnpu-sim-verilator-bazel:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    timeout-minutes: 60
+    env:
+      CI_BUILD_STAGE_NAME: build
+      CI_RUNS_ON: ubuntu-24.04
+      CI_OS_NAME: linux
+      CI_TMPDIR: /tmp
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 1
+          ssh-key: ${{ secrets.ACTIONS_DEPLOY_KEY }}
+      - uses: bazel-contrib/setup-bazel@0.15.0
+        with:
+          # Avoid downloading Bazel every time.
+          bazelisk-cache: true
+          # Store build cache per workflow.
+          disk-cache: ${{ github.workflow }}
+          # Share repository cache between workflows.
+          repository-cache: true
+      - uses: actions/download-artifact@v8
+        with:
+          name: verilator
+          path: ${{ env.CI_TMPDIR }}/verilator_install
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y git autoconf bc bison build-essential ccache clang curl device-tree-compiler flex fuse3 gawk mold python-is-python3 python3 python3-full python3-pip python3-pyelftools python3-setuptools python3-venv srecord unzip xxd zip openjdk-17-jre z3
+      - name: Generate RTL and run simulation
+        run: |
+          bazel test //tests/uvm:uvm_run_regression --test_output=streamed
       - uses: actions/upload-artifact@v4
         with:
           name: uvm_regression_result.zip
