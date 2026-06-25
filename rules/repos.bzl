@@ -332,6 +332,10 @@ def uvm_verilator_repos():
         remote = "https://github.com/verilator/verilator",
         commit = verilator_commit,
         build_file = "@coralnpu_hw//third_party:verilator.BUILD",
+        patches = [
+            "@coralnpu_hw//third_party/verilator:clang-ambiguous-overload.patch",
+        ],
+        patch_args = ["-p1"],
     )
 
     git_repository(

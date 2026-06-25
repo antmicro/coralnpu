@@ -138,7 +138,6 @@ def _verilator_model_impl(ctx):
     make_log = ctx.actions.declare_file(outdir_name + "/make.log")
     outdir = output_file.dirname
 
-    verilator_root = "$PWD/{}".format(ctx.files._verilator_lib[0].dirname)
     uvm_lib_path = "$PWD/{}".format(ctx.files._uvm_lib[0].dirname)
     coralnpu_mpact_lib_path = "$PWD/{}".format(ctx.files.coralnpu_mpact_lib[0].path)
 
@@ -155,7 +154,8 @@ def _verilator_model_impl(ctx):
 
     verilator_include_dir = None
     for f in ctx.files._verilator:
-        if f.basename == "include":
+        # This assumes verilated.mk is present in the include/ directory
+        if f.basename == "verilated.mk":
             verilator_include_dir = f
             break
 
@@ -169,7 +169,9 @@ def _verilator_model_impl(ctx):
             --vpi \
             --prefix Vtop \
             -o {hdl_toplevel} \
-            {include_dirs_str}
+            {include_dirs_str} \
+            -LDFLAGS "-lstdc++" \
+            -LDFLAGS "-lm" \
             -I"{uvm_lib_path}/src" \
 	        "{uvm_lib_path}/src/uvm_pkg.sv" \
 	        "{uvm_lib_path}/src/dpi/uvm_dpi.cc" \
@@ -181,7 +183,7 @@ def _verilator_model_impl(ctx):
             {dpi_srcs} \
             {verilog_sources}
     """.strip().split("\n")).format(
-        verilator_root = "$PWD/{}".format(verilator_include_dir.dirname),
+        verilator_root = "$PWD/{}".format(verilator_include_dir.dirname.rsplit("/", 1)[0]),
         verilator = verilator_bin.path,
         outdir = outdir,
         hdl_toplevel = hdl_toplevel,
@@ -265,10 +267,6 @@ verilator_model = rule(
         "vlt_tpl": attr.label(
             default = "@coralnpu_hw//rules:default.vlt.tpl",
             allow_single_file = True,
-        ),
-        "_verilator_lib": attr.label(
-            default = "@verilator-native//:all_srcs",
-            allow_files = True,
         ),
         "_verilator": attr.label(
             default = Label("@verilator-native//:verilator"),
