@@ -116,10 +116,6 @@ jobs:
           disk-cache: ${{ github.workflow }}
           # Share repository cache between workflows.
           repository-cache: true
-      - uses: actions/download-artifact@v8
-        with:
-          name: verilator
-          path: ${{ env.CI_TMPDIR }}/verilator_install
       - name: Install dependencies
         run: |
           sudo apt-get update
