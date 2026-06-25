@@ -102,11 +102,11 @@ def main():
             [
                 model,
                 "+UVM_TESTNAME=coralnpu_regression_test",
-                "+UVM_VERBOSITY=UVM_MEDIUM",
+                "+UVM_VERBOSITY=UVM_LOW",
                 "+REGRESSION_LIST=" + batch_path,
                 "+TEST_ELF=dummy",
                 "+TEST_TIMEOUT=100000",
-                "+MISA_VALUE='h40201120",
+                "+MISA_VALUE='h40201120'",
             ],
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
