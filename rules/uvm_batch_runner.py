@@ -38,10 +38,6 @@ def write_entry(f, path, label, seen, spike_bin=None, spike_dir=None):
         tohost = 0xFFFFFFFF
 
     spike_log = "NONE"
-    if spike_bin and label not in SPIKE_DENYLIST:
-        candidate = os.path.join(spike_dir, "%d.spike.log" % len(seen))
-        if generate_spike_log(spike_bin, path, candidate, entry):
-            spike_log = candidate
 
     timeout = TIMEOUT_MAP.get(label, 100000)
     f.write(format_batch_entry(path, tohost, entry, timeout, spike_log, path))
