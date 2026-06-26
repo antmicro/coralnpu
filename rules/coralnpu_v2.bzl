@@ -332,6 +332,9 @@ def coralnpu_v2_binary(
 def collect_coralnpu_elfs(name, tags = [], visibility = ["//tests/uvm:__pkg__"]):
     """Aggregates the .elf filegroup of every coralnpu_v2_binary in this package.
 
+    Only includes targets that use the default (per-target) linker script, matching
+    the filter applied by utils/run_uvm_regression.py get_targets().
+
     Args:
       name: The name of the generated filegroup.
       tags: build tags.
@@ -340,7 +343,8 @@ def collect_coralnpu_elfs(name, tags = [], visibility = ["//tests/uvm:__pkg__"])
     elfs = [
         "{}.elf".format(r["name"])
         for r in native.existing_rules().values()
-        if r["kind"] == "_coralnpu_v2_binary"
+        if r["kind"] == "_coralnpu_v2_binary" and
+           r.get("linker_script", "") == ":{}.ld".format(r["name"])
     ]
     native.filegroup(
         name = name,
