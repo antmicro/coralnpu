@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("//rules:coralnpu_v2.bzl", "coralnpu_v2_binary")
+load("//rules:coralnpu_v2.bzl", "collect_coralnpu_elfs", "coralnpu_v2_binary")
 load("//rules:utils.bzl", "template_rule")
 
 package(default_visibility = ["//visibility:public"])
@@ -77,3 +77,4 @@ filegroup(
         ":rvv_float_matmul_optimized.elf",
     ],
 )
+collect_coralnpu_elfs(name = "coralnpu_elfs")
