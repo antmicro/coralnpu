@@ -64,4 +64,5 @@ cocotb_test_suite(
 coralnpu_v2_binary(
     name = "csr_test_program",
     srcs = ["csr_test_program.cc"],
+    visibility = ["//visibility:public"],
 )

@@ -302,8 +302,11 @@ def _verilator_batch_uvm_impl(ctx):
             model_binary = f
             break
 
+    if not model_binary:
+        fail("Model binary could not be found")
+
     riscv_dirs = [f for f in ctx.files.riscv_tests if f.is_directory]
-    coralnpu_elfs = [f for f in ctx.files.coralnpu_tests if not f.is_directory]
+    coralnpu_elfs = [f for f in ctx.files.coralnpu_tests if f.extension == "elf"]
 
     spike_bin = None
     for f in ctx.files._spike:
@@ -311,12 +314,15 @@ def _verilator_batch_uvm_impl(ctx):
             spike_bin = f
             break
 
+    if not spike_bin:
+        fail("Spike binary could not be found")
+
     ws = "coralnpu_hw"
     runner = ctx.actions.declare_file(ctx.label.name)
     ctx.actions.symlink(output = runner, target_file = ctx.executable._runner, is_executable = True)
 
     runfiles = ctx.runfiles(
-        files = riscv_dirs + coralnpu_elfs + ([model_binary] if model_binary else []) + ctx.files._spike,
+        files = riscv_dirs + coralnpu_elfs + [model_binary] + ctx.files._spike,
         collect_default = True,
     ).merge(ctx.attr._runner[DefaultInfo].default_runfiles)
 
@@ -327,13 +333,13 @@ def _verilator_batch_uvm_impl(ctx):
         ),
         RunEnvironmentInfo(
             environment = {
-                "UVM_MODEL_RLOCATION": _rlocation_path(ws, model_binary) if model_binary else "MISSING_MODEL",
+                "UVM_MODEL_RLOCATION": _rlocation_path(ws, model_binary),
                 "UVM_RISCV_DIRS": "\n".join([_rlocation_path(ws, f) for f in riscv_dirs]),
                 "UVM_CORALNPU_ELFS": "\n".join([
                     "%s\t%s" % (_rlocation_path(ws, f), _label_str(f.owner))
                     for f in coralnpu_elfs
                 ]),
-                "UVM_SPIKE_RLOCATION": _rlocation_path(ws, spike_bin) if spike_bin else "",
+                "UVM_SPIKE_RLOCATION": _rlocation_path(ws, spike_bin),
             },
         ),
     ]

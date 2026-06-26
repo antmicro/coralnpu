@@ -95,6 +95,7 @@ coralnpu_v2_binary(
     srcs = [
         "mailbox_example.cc",
     ],
+    visibility = ["//visibility:public"],
 )
 
 cc_binary(
