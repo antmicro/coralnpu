@@ -108,6 +108,8 @@ SPIKE_DENYLIST = [
 
 # Map of targets to custom timeouts (in nanoseconds)
 TIMEOUT_MAP = {
+    "//tests/cocotb:nop_test": 5000000,
+    "//tests/cocotb/rvv/ml_ops:rvv_float_matmul": 100000000,
     "//tests/cocotb/rvv/ml_ops:rvv_matmul": 100000000,
     "//tests/cocotb/rvv/ml_ops:rvv_matmul_assembly": 100000000,
     "//examples:coralnpu_v2_rvv_add_intrinsic": 200000,
