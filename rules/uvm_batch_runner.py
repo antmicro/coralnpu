@@ -6,14 +6,20 @@
 #   UVM_CORALNPU_ELFS: newline-separated "<rlocation path>\t<bazel label>" pairs for individual coralnpu_v2_binary ELFs
 #   UVM_SPIKE_RLOCATION: rlocation path of the spike binary, if any
 
+from __future__ import annotations
+
 import os
+import csv
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
+import logging
+from pathlib import Path
+from typing import IO, TypedDict
 
 from bazel_tools.tools.python.runfiles import runfiles
-
 from run_uvm_regression import (
     DENYLIST,
     SPIKE_DENYLIST,
@@ -23,41 +29,118 @@ from run_uvm_regression import (
     get_entry_point,
     get_tohost_addr,
     is_riscv_test_file,
+    run_uvm_batch,
 )
+
+
+class TestInfo(TypedDict):
+    """Metadata describing a single regression test."""
+
+    elf: str
+    tohost: int
+    entry: int
+    timeout: int
+    spike: str
+    safe_log: str
+
+
+TestInfoMap = dict[str, TestInfo]
 
 SUMMARY_FAILED_RE = re.compile(r"\[REGRESSION_SUMMARY\] (\d+)/(\d+) tests failed\.")
 SUMMARY_PASSED_RE = re.compile(r"\[REGRESSION_SUMMARY\] All (\d+) tests passed\.")
 
 
-def write_entry(f, path, label, seen, spike_bin=None, spike_dir=None):
-    if path in seen or label in DENYLIST:
+def write_entry(
+    batch_file: IO[str],
+    elf_path: Path,
+    log_name: str,
+    label: str,
+    seen: set[Path],
+    test_info_map: TestInfoMap,
+) -> None:
+    """Append a test to the batch file.
+
+    Duplicate and denylisted tests are skipped. Metadata describing each
+    scheduled test is recorded in ``test_info_map`` for later processing.
+    """
+
+    if elf_path in seen or label in DENYLIST:
         return
-    seen.add(path)
-    entry = get_entry_point(path)
-    tohost = get_tohost_addr(path)
+
+    seen.add(elf_path)
+
+    entry = get_entry_point(str(elf_path))
+    tohost = get_tohost_addr(str(elf_path))
     if tohost is None:
         tohost = 0xFFFFFFFF
 
+    timeout = TIMEOUT_MAP.get(label, 100000)
     spike_log = "NONE"
 
-    timeout = TIMEOUT_MAP.get(label, 100000)
-    f.write(format_batch_entry(path, tohost, entry, timeout, spike_log, path))
+    batch_file.write(
+        format_batch_entry(
+            str(elf_path),
+            tohost,
+            entry,
+            timeout,
+            spike_log,
+            label,
+        )
+    )
+
+    test_info_map[label] = TestInfo(
+        elf=str(elf_path.resolve()),
+        tohost=tohost,
+        entry=entry,
+        timeout=timeout,
+        spike=spike_log,
+        safe_log=log_name,
+    )
 
 
-def build_batch_file(out_path, riscv_dirs, coralnpu_elfs, spike_bin=None):
-    seen = set()
-    spike_dir = tempfile.mkdtemp(prefix="uvm_spike_") if spike_bin else None
-    with open(out_path, "w") as f:
-        for d in riscv_dirs:
-            for root, _, files in os.walk(d):
-                for fname in sorted(files):
-                    if not is_riscv_test_file(fname):
-                        continue
-                    label = "//third_party/riscv-tests:%s" % fname
-                    write_entry(f, os.path.join(root, fname), label, seen,
-                               spike_bin, spike_dir)
-        for path, label in coralnpu_elfs:
-            write_entry(f, path, label, seen, spike_bin, spike_dir)
+def build_batch_file(
+    batch_path: Path,
+    riscv_dirs: list[Path],
+    coralnpu_elfs: list[tuple[Path, str]],
+) -> TestInfoMap:
+    """Generate the simulator batch file.
+
+    The returned mapping contains metadata for every scheduled regression
+    test keyed by its Bazel label.
+    """
+
+    seen: set[Path] = set()
+    test_info_map: TestInfoMap = {}
+
+    with batch_path.open("w") as batch_file:
+        for directory in riscv_dirs:
+            for elf in sorted(directory.rglob("*")):
+                if not elf.is_file():
+                    continue
+
+                if not is_riscv_test_file(elf.name):
+                    continue
+
+                write_entry(
+                    batch_file,
+                    elf,
+                    f"{elf.name}.log",
+                    f"//third_party/riscv-tests:{elf.name}",
+                    seen,
+                    test_info_map,
+                )
+
+        for elf_path, label in coralnpu_elfs:
+            write_entry(
+                batch_file,
+                elf_path,
+                f"{elf_path.name}.log",
+                label,
+                seen,
+                test_info_map,
+            )
+
+    return test_info_map
 
 
 def main():
@@ -69,14 +152,12 @@ def main():
         sys.exit("ERROR: model not found: %s" % model_rloc)
 
     riscv_dirs = [
-        r.Rlocation(p)
-        for p in os.environ.get("UVM_RISCV_DIRS", "").splitlines()
-        if p
+        Path(r.Rlocation(p)) for p in os.environ.get("UVM_RISCV_DIRS", "").splitlines() if p
     ]
     coralnpu_elfs = []
     for line in os.environ.get("UVM_CORALNPU_ELFS", "").splitlines():
         rloc, label = line.split("\t")
-        coralnpu_elfs.append((r.Rlocation(rloc), label))
+        coralnpu_elfs.append((Path(r.Rlocation(rloc)), label))
 
     spike_bin = None
     spike_rloc = os.environ.get("UVM_SPIKE_RLOCATION")
@@ -85,51 +166,59 @@ def main():
         if not spike_bin or not os.path.isfile(spike_bin):
             sys.exit("ERROR: spike binary not found: %s" % spike_rloc)
 
-    fd, batch_path = tempfile.mkstemp(prefix="uvm_batch_", suffix=".txt")
-    os.close(fd)
-    try:
-        build_batch_file(batch_path, riscv_dirs, coralnpu_elfs, spike_bin)
+    results_tmp = tempfile.TemporaryDirectory()
+    results_dir_path = Path(results_tmp.name)
+    batch_path = results_dir_path / "uvm_batch_list.txt"
+    log_path = results_dir_path / "logs"
+    log_path.mkdir()
+    regression_log_path = log_path / "regression.log"
+    test_info_map = build_batch_file(
+        batch_path, riscv_dirs, coralnpu_elfs 
+    )
 
-        print("Batch list:")
-        with open(batch_path) as f:
-            print(f.read())
+    logging.info("Starting UVM regression...")
+    cmd = [
+        model,
+        "+UVM_TESTNAME=coralnpu_regression_test",
+        "+UVM_VERBOSITY=UVM_LOW",
+        f"+REGRESSION_LIST={batch_path}",
+        "+TEST_ELF=dummy",
+        "+TEST_TIMEOUT=100000",
+        "+MISA_VALUE='h40201120'",
+    ]
+    results, _ = run_uvm_batch(
+        cmd,
+        os.environ.copy(),
+        regression_log_path.as_posix(),
+        log_path.as_posix(),
+        test_info_map,
+    )
 
-        print("Starting UVM regression...")
-        proc = subprocess.Popen(
-            [
-                model,
-                "+UVM_TESTNAME=coralnpu_regression_test",
-                "+UVM_VERBOSITY=UVM_LOW",
-                "+REGRESSION_LIST=" + batch_path,
-                "+TEST_ELF=dummy",
-                "+TEST_TIMEOUT=100000",
-                "+MISA_VALUE='h40201120'",
-            ],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            text=True,
-        )
-        lines = []
-        for line in proc.stdout:
-            sys.stdout.write(line)
-            lines.append(line)
-        proc.wait()
-        output = "".join(lines)
-    finally:
-        os.remove(batch_path)
+    csv_file = Path(os.environ.get("TEST_UNDECLARED_OUTPUTS_DIR")) / "uvm_results.csv"
 
-    fail_match = SUMMARY_FAILED_RE.search(output)
-    pass_match = SUMMARY_PASSED_RE.search(output)
-    if fail_match:
-        failed, total = fail_match.groups()
-        print("[REGRESSION_SUMMARY] %s/%s tests failed." % (failed, total))
+    with open(csv_file, "w", newline='') as csvfile:
+        fieldnames = ["Target", "Status", "Reason", "Log Path"]
+        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+        writer.writeheader()
+        for row in results:
+            writer.writerow(row)
+
+    any_failed = any(r["Status"] != "PASS" for r in results)
+    if any_failed:
+        num_failed = sum(1 for r in results if r["Status"] != "PASS")
+        logging.error(f"Regression FAILED: {num_failed} tests failed.")
         sys.exit(1)
-    elif pass_match:
-        total = pass_match.group(1)
-        print("[REGRESSION_SUMMARY] All %s tests passed." % total)
-        sys.exit(0)
-    else:
-        sys.exit("ERROR: no REGRESSION_SUMMARY line found in simulator output")
+
+    logging.info(f"Regression PASSED.")
+
+    shutil.make_archive(
+        base_name=(
+            Path(os.environ.get("TEST_UNDECLARED_OUTPUTS_DIR"))
+            / "uvm_regression_results"
+        ).as_posix(),
+        format="zip",
+        root_dir=results_dir_path.as_posix(),
+    )
 
 
 if __name__ == "__main__":
