@@ -305,6 +305,8 @@ module coralnpu_tb_top;
               break; // Stop monitoring for this test
             end
           end
+
+          if (!resetn) break;
         end
       end
     join_none
