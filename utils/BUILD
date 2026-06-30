@@ -22,6 +22,13 @@ py_binary(
     srcs = ["scm_info.py"],
 )
 
+py_library(
+    name = "run_uvm_regression",
+    srcs = ["run_uvm_regression.py"],
+    imports = ["."],
+    deps = [requirement("pyelftools")],
+)
+
 py_test(
     name = "run_uvm_regression_test",
     srcs = [
