@@ -25,7 +25,8 @@ from run_uvm_regression import (
     is_riscv_test_file,
 )
 
-SUMMARY_RE = re.compile(r"\[REGRESSION_SUMMARY\] (\d+)/(\d+) tests failed\.")
+SUMMARY_FAILED_RE = re.compile(r"\[REGRESSION_SUMMARY\] (\d+)/(\d+) tests failed\.")
+SUMMARY_PASSED_RE = re.compile(r"\[REGRESSION_SUMMARY\] All (\d+) tests passed\.")
 
 
 def write_entry(f, path, label, seen, spike_bin=None, spike_dir=None):
@@ -117,13 +118,18 @@ def main():
     finally:
         os.remove(batch_path)
 
-    match = SUMMARY_RE.search(output)
-    if not match:
+    fail_match = SUMMARY_FAILED_RE.search(output)
+    pass_match = SUMMARY_PASSED_RE.search(output)
+    if fail_match:
+        failed, total = fail_match.groups()
+        print("[REGRESSION_SUMMARY] %s/%s tests failed." % (failed, total))
+        sys.exit(1)
+    elif pass_match:
+        total = pass_match.group(1)
+        print("[REGRESSION_SUMMARY] All %s tests passed." % total)
+        sys.exit(0)
+    else:
         sys.exit("ERROR: no REGRESSION_SUMMARY line found in simulator output")
-
-    failed, total = match.groups()
-    print("[REGRESSION_SUMMARY] %s/%s tests failed." % (failed, total))
-    sys.exit(1 if int(failed) else 0)
 
 
 if __name__ == "__main__":
