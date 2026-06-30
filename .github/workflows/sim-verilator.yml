@@ -126,6 +126,6 @@ jobs:
           bazel test //tests/uvm:uvm_run_regression --test_output=streamed
       - uses: actions/upload-artifact@v4
         with:
-          name: uvm_regression_result.zip
+          name: uvm_regression_results.zip
           path: |
-            ${{ github.workspace }}/uvm_regression_*.zip
+            ${{ github.workspace }}/bazel-out/k8-fastbuild/testlogs/tests/uvm/uvm_run_regression/test.outputs/uvm_regression_results.zip
