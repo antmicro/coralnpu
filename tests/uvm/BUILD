@@ -34,7 +34,6 @@ filegroup(
     srcs = glob(include = ["common/**/*", "env/**/*", "tb/**/*", "tests/**/*"]),
 )
 
-
 # Source files like in coralnpu_dv.f
 filegroup(
     name = "source_files",
