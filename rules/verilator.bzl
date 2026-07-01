@@ -6,19 +6,7 @@ load("@rules_cc//cc:find_cc_toolchain.bzl", "find_cc_toolchain")
 load("@rules_cc//cc/common:cc_info.bzl", "CcInfo")
 load("@rules_hdl//verilator:defs.bzl", "verilator_cc_library")
 load("@rules_hdl//verilog:providers.bzl", "VerilogInfo", "verilog_library")
-
-
-# Number of CPUs reserved per Verilate action in Bazel's local scheduler.
-# Sourced from `nproc` at workspace-fetch time so we don't oversubscribe
-# small hosts (a hardcoded 8 was blocking 6-core boxes from scheduling
-# more than one action at a time).
-_verilator_make_parallelism = MAKE_JOBS
-
-def _verilator_resource_estimator(os, input_size):
-    # Cap the scheduler reservation at 4 so multiple actions can still run
-    # in parallel on larger hosts; the `make -j` inside the action is free
-    # to use more threads if the scheduler hands them over.
-    return {"cpu": min(_verilator_make_parallelism, 4), "memory": 4096}
+load("@coralnpu_hw//rules:coco_tb.bzl", "verilator_make_parallelism", "verilator_resource_estimator")
 
 def _verilator_model_impl(ctx):
     hdl_toplevel = ctx.attr.hdl_toplevel
@@ -34,6 +22,16 @@ def _verilator_model_impl(ctx):
     dpi_includes = []
     dpi_files_dict = {}
     verilog_srcs = []
+
+    # Collect all input files for the action and their paths
+    all_inputs_dict = {}
+    verilog_paths = []
+
+    def add_input(f):
+        if type(f) == "File":
+            all_inputs_dict[f.path] = f
+            return True
+        return False
 
     def add_dpi_src(f):
         if type(f) == "File" and f.extension in ["cc", "cpp", "cxx", "c", "a", "o"]:
@@ -83,16 +81,6 @@ def _verilator_model_impl(ctx):
         if VerilogInfo in dep:
             verilog_srcs.append(dep[VerilogInfo].dag)
 
-    # Collect all input files for the action and their paths
-    all_inputs_dict = {}
-    verilog_paths = []
-
-    def add_input(f):
-        if type(f) == "File":
-            all_inputs_dict[f.path] = f
-            return True
-        return False
-
     for f in dpi_files_dict.values():
         add_input(f)
 
@@ -106,11 +94,6 @@ def _verilator_model_impl(ctx):
                 for s in node.srcs:
                     if add_input(s):
                         verilog_paths.append(s.path)
-
-    if ctx.attr.verilog_source:
-        f = ctx.file.verilog_source
-        add_input(f)
-        verilog_paths.append(f.path)
 
     for f in ctx.files.verilog_sources:
         add_input(f)
@@ -205,7 +188,7 @@ def _verilator_model_impl(ctx):
         ar = ar_executable,
         ld = ld_executable,
         cxx = compiler_executable,
-        parallelism = _verilator_make_parallelism,
+        parallelism = verilator_make_parallelism,
     )
 
     script = " && ".join([verilator_cmd.strip(), make_cmd])
@@ -223,7 +206,7 @@ def _verilator_model_impl(ctx):
         ),
         command = script,
         mnemonic = "Verilate",
-        resource_set = _verilator_resource_estimator,
+        resource_set = verilator_resource_estimator,
     )
 
     return [
@@ -247,14 +230,13 @@ verilator_model = rule(
     to execute the simulation.
 
     Attributes:
-        verilog_source: The verilog source file to build the model from.
         hdl_toplevel: The name of the toplevel module.
+        verilog_sources: The verilog source file(s) to build the model from.
         cflags: A list of flags to pass to the compiler.
         deps: Additional C++/DPI dependencies (CcInfo).
     """,
     implementation = _verilator_model_impl,
     attrs = {
-        "verilog_source": attr.label(allow_single_file = True, mandatory = False),
         "verilog_sources": attr.label_list(allow_files = [".v", ".sv"]),
         "include_dirs": attr.label_list(allow_files = True),
         "include_dirs_deps": attr.label_list(allow_files = True),

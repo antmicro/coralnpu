@@ -166,11 +166,11 @@ def coralnpu_repos2():
 
     http_archive(
         name = "rules_foreign_cc",
-        sha256 = "8e5605dc2d16a4229cb8fbe398514b10528553ed4f5f7737b663fdd92f48e1c2",
-        strip_prefix = "rules_foreign_cc-0.13.0",
-        url = "https://github.com/bazel-contrib/rules_foreign_cc/releases/download/0.13.0/rules_foreign_cc-0.13.0.tar.gz",
+        sha256 = "32759728913c376ba45b0116869b71b68b1c2ebf8f2bcf7b41222bc07b773d73",
+        strip_prefix = "rules_foreign_cc-0.15.1",
+        url = "https://github.com/bazel-contrib/rules_foreign_cc/releases/download/0.15.1/rules_foreign_cc-0.15.1.tar.gz",
         patches = [
-            "@coralnpu_hw//third_party/rules_foreign_cc:rules-foreign-cc-out-data-files.patch",
+            "@coralnpu_hw//third_party/rules_foreign_cc:rules-foreign-cc-features-struct.patch",
         ],
         patch_args = ["-p1"],
     )
