@@ -13,7 +13,7 @@ jobs:
   build-verilator:
     runs-on: ubuntu-24.04
     permissions:
-      contents: read 
+      contents: read
     timeout-minutes: 30
     env:
       CI_BUILD_STAGE_NAME: build
@@ -42,7 +42,7 @@ jobs:
   coralnpu-sim-verilator:
     runs-on: ubuntu-24.04
     permissions:
-      contents: read 
+      contents: read
     timeout-minutes: 60
     needs:
       - build-verilator
