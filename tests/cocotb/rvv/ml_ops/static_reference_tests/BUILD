@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+load("//rules:coralnpu_v2.bzl", "coralnpu_v2_binary", "collect_coralnpu_elfs")
 load("//rules:coco_tb.bzl", "cocotb_test_suite")
 load("//rules:coralnpu_v2.bzl", "coralnpu_v2_binary")
 load(
@@ -128,3 +129,5 @@ cocotb_test_suite(
     vcs_verilog_sources = ["//hdl/chisel/src/coralnpu:rvv_core_mini_axi_cc_library_verilog"],
     verilator_model = "//tests/cocotb:rvv_core_mini_axi_model",
 )
+
+collect_coralnpu_elfs(name = "coralnpu_elfs")
