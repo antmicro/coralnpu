@@ -1,59 +1,24 @@
+From 0a186a8b4047de3aad53993f30754b19f8d14127 Mon Sep 17 00:00:00 2001
+From: Alex Van Damme <atv@google.com>
+Date: Mon, 2 Mar 2026 00:27:01 +0000
+Subject: [PATCH] Use glob for verilator_bin data files
+
+Replace the explicit file list in verilator_bin's data attribute with a
+glob to automatically include all verilator include files. This ensures
+newer verilator versions' files (like verilated_std_waiver.vlt) are
+available without needing to enumerate each one.
+
+Generated files (verilated.mk, verilated_config.h) are kept explicit since
+glob only matches source files.
+---
+ .../verilator/verilator.BUILD.bazel           | 39 ++++---------------
+ 1 file changed, 7 insertions(+), 32 deletions(-)
+
 diff --git a/dependency_support/verilator/verilator.BUILD.bazel b/dependency_support/verilator/verilator.BUILD.bazel
-index 77860d1..bfbd69f 100644
+index 707d8ed..a8604a8 100644
 --- a/dependency_support/verilator/verilator.BUILD.bazel
 +++ b/dependency_support/verilator/verilator.BUILD.bazel
-@@ -127,6 +127,7 @@ verilator_astgen(
-         "src/V3AstNodeDType.h",
-         "src/V3AstNodeExpr.h",
-         "src/V3AstNodeOther.h",
-+        "src/V3AstNodeStmt.h",
-         "src/V3DfgVertices.h",
-         "src/Verilator.cpp",
-     ],
-@@ -143,6 +144,7 @@ verilator_astgen(
-         "V3Ast__gen_yystype.h",
-         "V3Dfg__gen_ast_to_dfg.h",
-         "V3Dfg__gen_auto_classes.h",
-+        "V3Dfg__gen_clone_cases.h",
-         "V3Dfg__gen_dfg_to_ast.h",
-         "V3Dfg__gen_forward_class_decls.h",
-         "V3Dfg__gen_macros.h",
-@@ -158,6 +160,8 @@ verilator_astgen(
-         "V3AstNodeExpr.h",
-         "--astdef",
-         "V3AstNodeOther.h",
-+        "--astdef",
-+        "V3AstNodeStmt.h",
-         "--dfgdef",
-         "V3DfgVertices.h",
-         "--classes",
-@@ -172,6 +176,7 @@ verilator_astgen(
-         "src/V3AstNodeDType.h",
-         "src/V3AstNodeExpr.h",
-         "src/V3AstNodeOther.h",
-+        "src/V3AstNodeStmt.h",
-         "src/V3Const.cpp",
-         "src/V3DfgVertices.h",
-         "src/Verilator.cpp",
-@@ -186,6 +191,8 @@ verilator_astgen(
-         "V3AstNodeExpr.h",
-         "--astdef",
-         "V3AstNodeOther.h",
-+        "--astdef",
-+        "V3AstNodeStmt.h",
-         "--dfgdef",
-         "V3DfgVertices.h",
-         "V3Const.cpp",
-@@ -281,6 +288,7 @@ cc_library(
-         ":V3Const__gen.cpp",
-         ":V3Dfg__gen_ast_to_dfg.h",
-         ":V3Dfg__gen_auto_classes.h",
-+        ":V3Dfg__gen_clone_cases.h",
-         ":V3Dfg__gen_dfg_to_ast.h",
-         ":V3Dfg__gen_forward_class_decls.h",
-         ":V3Dfg__gen_macros.h",
-@@ -445,40 +453,15 @@ cc_binary(
-     deps = [":verilator_libV3"],
+@@ -1,36 +1,11 @@
      data = [
          "bin/verilator_includer",
 -        "include/verilated.cpp",
@@ -97,6 +62,6 @@ index 77860d1..bfbd69f 100644
 +        "include/**/*.sv",
 +        "include/**/*.vlt",
 +    ]),
- )
- 
- sh_binary(
+-- 
+2.39.5
+
