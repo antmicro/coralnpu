@@ -8,14 +8,14 @@
 
 from __future__ import annotations
 
-import os
 import csv
+import logging
+import os
 import re
 import shutil
 import subprocess
 import sys
 import tempfile
-import logging
 from pathlib import Path
 from typing import IO, TypedDict
 
@@ -45,9 +45,6 @@ class TestInfo(TypedDict):
 
 
 TestInfoMap = dict[str, TestInfo]
-
-SUMMARY_FAILED_RE = re.compile(r"\[REGRESSION_SUMMARY\] (\d+)/(\d+) tests failed\.")
-SUMMARY_PASSED_RE = re.compile(r"\[REGRESSION_SUMMARY\] All (\d+) tests passed\.")
 
 
 def write_entry(
@@ -98,6 +95,10 @@ def write_entry(
     )
 
 
+def label_to_fname(label: str) -> str:
+    return label.replace("//", "").replace(":", "_").replace("/", "_")
+
+
 def build_batch_file(
     batch_path: Path,
     riscv_dirs: list[Path],
@@ -121,11 +122,12 @@ def build_batch_file(
                 if not is_riscv_test_file(elf.name):
                     continue
 
+                label = f"//third_party/riscv-tests:{elf.name}"
                 write_entry(
                     batch_file,
                     elf,
-                    f"{elf.name}.log",
-                    f"//third_party/riscv-tests:{elf.name}",
+                    f"{label_to_fname(label)}.log",
+                    label,
                     seen,
                     test_info_map,
                 )
@@ -134,7 +136,7 @@ def build_batch_file(
             write_entry(
                 batch_file,
                 elf_path,
-                f"{elf_path.name}.log",
+                f"{label_to_fname(label)}.log",
                 label,
                 seen,
                 test_info_map,
@@ -152,19 +154,14 @@ def main():
         sys.exit("ERROR: model not found: %s" % model_rloc)
 
     riscv_dirs = [
-        Path(r.Rlocation(p)) for p in os.environ.get("UVM_RISCV_DIRS", "").splitlines() if p
+        Path(r.Rlocation(p))
+        for p in os.environ.get("UVM_RISCV_DIRS", "").splitlines()
+        if p
     ]
     coralnpu_elfs = []
     for line in os.environ.get("UVM_CORALNPU_ELFS", "").splitlines():
         rloc, label = line.split("\t")
         coralnpu_elfs.append((Path(r.Rlocation(rloc)), label))
-
-    spike_bin = None
-    spike_rloc = os.environ.get("UVM_SPIKE_RLOCATION")
-    if spike_rloc:
-        spike_bin = r.Rlocation(spike_rloc)
-        if not spike_bin or not os.path.isfile(spike_bin):
-            sys.exit("ERROR: spike binary not found: %s" % spike_rloc)
 
     results_tmp = tempfile.TemporaryDirectory()
     results_dir_path = Path(results_tmp.name)
@@ -172,9 +169,7 @@ def main():
     log_path = results_dir_path / "logs"
     log_path.mkdir()
     regression_log_path = log_path / "regression.log"
-    test_info_map = build_batch_file(
-        batch_path, riscv_dirs, coralnpu_elfs 
-    )
+    test_info_map = build_batch_file(batch_path, riscv_dirs, coralnpu_elfs)
 
     logging.info("Starting UVM regression...")
     cmd = [
@@ -194,9 +189,7 @@ def main():
         test_info_map,
     )
 
-    csv_file = Path(os.environ.get("TEST_UNDECLARED_OUTPUTS_DIR")) / "uvm_results.csv"
-
-    with open(csv_file, "w", newline='') as csvfile:
+    with open(results_dir_path / "uvm_results.csv", "w", newline="") as csvfile:
         fieldnames = ["Target", "Status", "Reason", "Log Path"]
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
         writer.writeheader()
@@ -209,7 +202,7 @@ def main():
         logging.error(f"Regression FAILED: {num_failed} tests failed.")
         sys.exit(1)
 
-    logging.info(f"Regression PASSED.")
+    logging.info(f"Regression PASSED: {len(results)} tests total.")
 
     shutil.make_archive(
         base_name=(
