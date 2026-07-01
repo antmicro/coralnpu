@@ -13,7 +13,7 @@ jobs:
   build-verilator:
     runs-on: ubuntu-24.04
     permissions:
-      contents: write
+      contents: read 
     timeout-minutes: 30
     env:
       CI_BUILD_STAGE_NAME: build
@@ -42,7 +42,7 @@ jobs:
   coralnpu-sim-verilator:
     runs-on: ubuntu-24.04
     permissions:
-      contents: write
+      contents: read 
     timeout-minutes: 60
     needs:
       - build-verilator
@@ -89,15 +89,16 @@ jobs:
           export CORALNPU_MPACT=${{ env.CI_TMPDIR }}/coralnpu-mpact
           bazel build //hdl/chisel/src/coralnpu:rvv_core_mini_axi_cc_library_emit_verilog
           python3 utils/run_uvm_regression.py --simulator=verilator
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
-          name: uvm_regression_result.zip
+          name: uvm_regression_results
+          archive: false
           path: |
             ${{ github.workspace }}/uvm_regression_*.zip
   coralnpu-sim-verilator-bazel:
     runs-on: ubuntu-24.04
     permissions:
-      contents: write
+      contents: read
     timeout-minutes: 120
     env:
       CI_BUILD_STAGE_NAME: build
@@ -124,8 +125,9 @@ jobs:
       - name: Generate RTL and run simulation
         run: |
           bazel test //tests/uvm:uvm_run_regression --test_output=streamed
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
-          name: uvm_regression_results.zip
+          name: uvm_regression_results
+          archive: false
           path: |
             ${{ github.workspace }}/bazel-out/k8-fastbuild/testlogs/tests/uvm/uvm_run_regression/test.outputs/uvm_regression_results.zip
