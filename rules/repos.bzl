@@ -151,6 +151,17 @@ def coralnpu_repos2():
     )
 
     http_archive(
+        name = "rules_foreign_cc",
+        sha256 = "8e5605dc2d16a4229cb8fbe398514b10528553ed4f5f7737b663fdd92f48e1c2",
+        strip_prefix = "rules_foreign_cc-0.13.0",
+        url = "https://github.com/bazel-contrib/rules_foreign_cc/releases/download/0.13.0/rules_foreign_cc-0.13.0.tar.gz",
+        patches = [
+            "@coralnpu_hw//third_party/rules_foreign_cc:rules-foreign-cc-out-data-files.patch",
+        ],
+        patch_args = ["-p1"],
+    )
+
+    http_archive(
         name = "llvm_firtool",
         urls = ["https://repo1.maven.org/maven2/org/chipsalliance/llvm-firtool/1.114.0/llvm-firtool-1.114.0.jar"],
         build_file = "@coralnpu_hw//third_party/llvm-firtool:BUILD.bazel",
