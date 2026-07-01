@@ -112,31 +112,6 @@ index 0000000..9022652
 +     warn "-Info: --gdbbt ignored: gdb doesn't seem to be working\n" if $Debug;
 +-- 
 +2.48.1.711.g2feabab25a-goog
-diff --git a/dependency_support/verilator/0002-Clang-ambiguous-overload.patch b/dependency_support/verilator/0002-Clang-ambiguous-overload.patch
-new file mode 100644
-index 0000000..6b855e1
---- /dev/null
-+++ b/dependency_support/verilator/0002-Clang-ambiguous-overload.patch
-@@ -0,0 +1,19 @@
-+diff --git a/include/verilated_types.h b/include/verilated_types.h
-+index 40847b65e..6d39358c9 100644
-+--- a/include/verilated_types.h
-++++ b/include/verilated_types.h
-+@@ -2070,7 +2070,13 @@ struct VlNull final {
-+         return nullptr;
-+     }
-+ };
-+-inline bool operator==(const void* ptr, VlNull) { return !ptr; }
-++
-++// Clang tends to throw ambiguous operator '==' error, even when other candidates require a cast
-++#if !defined(__clang__)
-++    inline bool operator==(const void* ptr) {
-++        return !ptr;
-++    }
-++#endif
-+ 
-+ //===================================================================
-+ // Verilog class reference container
 diff --git a/dependency_support/verilator/verilator.BUILD.bazel b/dependency_support/verilator/verilator.BUILD.bazel
 index 3c6f975..cdb96d7 100644
 --- a/dependency_support/verilator/verilator.BUILD.bazel
@@ -189,7 +164,7 @@ diff --git a/dependency_support/verilator/verilator.bzl b/dependency_support/ver
 index 376a24f..749c6b6 100644
 --- a/dependency_support/verilator/verilator.bzl
 +++ b/dependency_support/verilator/verilator.bzl
-@@ -22,7 +22,10 @@ def verilator():
+@@ -22,7 +22,11 @@ def verilator():
          http_archive,
          name = "verilator",
          build_file = Label("@rules_hdl//dependency_support/verilator:verilator.BUILD.bazel"),
@@ -204,3 +179,6 @@ index 376a24f..749c6b6 100644
 +            Label("@rules_hdl//dependency_support/verilator:0001-Remove-autodetect-of-VERILATOR_ROOT.patch"),
 +        ],
      )
+-- 
+2.39.5
+

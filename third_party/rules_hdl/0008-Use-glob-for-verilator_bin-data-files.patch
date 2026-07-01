@@ -56,6 +56,6 @@ index cdb96d7..40aa488 100644
 +        "include/**/*.sv",
 +        "include/**/*.vlt",
 +    ]),
- )
- 
- sh_binary(
+-- 
+2.39.5
+
