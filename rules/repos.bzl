@@ -356,16 +356,12 @@ def mpact_repos():
     )
 
 def uvm_verilator_repos():
-    verilator_commit = "749b93e4053434590f3ee4358c06f2eb8624872f"
+    verilator_commit = "58bd13b623dbb1a8db231aba7d68b07baf0f3d4f"
     git_repository(
         name = "verilator-native",
         remote = "https://github.com/verilator/verilator",
         commit = verilator_commit,
         build_file = "@coralnpu_hw//third_party:verilator.BUILD",
-        patches = [
-            "@coralnpu_hw//third_party/verilator:clang-ambiguous-overload.patch",
-        ],
-        patch_args = ["-p1"],
     )
 
     git_repository(
