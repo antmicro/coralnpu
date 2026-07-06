@@ -99,10 +99,6 @@ def _verilator_model_impl(ctx):
         add_input(f)
         verilog_paths.append(f.path)
 
-    for f in ctx.files.source_files:
-        add_input(f)
-        verilog_paths.append(f.path)
-
     for f in ctx.files.deps:
         add_input(f)
 
@@ -156,7 +152,6 @@ def _verilator_model_impl(ctx):
 	        "{uvm_lib_path}/src/uvm_pkg.sv" \
 	        "{uvm_lib_path}/src/dpi/uvm_dpi.cc" \
             "{coralnpu_mpact_lib_path}" \
-            {trace} \
             {cflags} \
             -I. -Ihdl/verilog {dpi_includes} \
             $PWD/{vlt_file} \
@@ -175,13 +170,11 @@ def _verilator_model_impl(ctx):
         vlt_file = vlt_file.path,
         dpi_srcs = " ".join(dpi_srcs_dict.values()),
         verilog_sources = verilog_sources_str,
-        trace = "--trace" if ctx.attr.trace else "",
     )
 
-    make_cmd = "PATH=`dirname {ld}`:$PATH make -j {parallelism} -C {outdir} -f Vtop.mk {trace} CXX={cxx} AR={ar} LINK={cxx} > {make_log} 2>&1".format(
+    make_cmd = "PATH=`dirname {ld}`:$PATH make -j {parallelism} -C {outdir} -f Vtop.mk CXX={cxx} AR={ar} LINK={cxx} > {make_log} 2>&1".format(
         outdir = outdir,
         make_log = make_log.path,
-        trace = "VM_TRACE=1" if ctx.attr.trace else "",
         ar = ar_executable,
         ld = ld_executable,
         cxx = compiler_executable,
@@ -237,13 +230,9 @@ verilator_model = rule(
     attrs = {
         "verilog_sources": attr.label_list(allow_files = [".v", ".sv"]),
         "include_dirs": attr.label_list(allow_files = True),
-        "include_dirs_deps": attr.label_list(allow_files = True),
-        "source_files": attr.label_list(allow_files = True),
-        "source_file_deps": attr.label_list(allow_files = True),
         "hdl_toplevel": attr.string(mandatory = True),
         "cflags": attr.string_list(default = []),
         "deps": attr.label_list(providers = [[DefaultInfo], [CcInfo], [VerilogInfo]]),
-        "trace": attr.bool(default = False),
         "vlt_tpl": attr.label(
             default = "@coralnpu_hw//rules:default.vlt.tpl",
             allow_single_file = True,
