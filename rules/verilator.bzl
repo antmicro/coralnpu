@@ -103,10 +103,7 @@ def _verilator_model_impl(ctx):
         add_input(f)
         verilog_paths.append(f.path)
 
-    for f in ctx.files.source_file_deps:
-        add_input(f)
-
-    for f in ctx.files.include_dirs_deps:
+    for f in ctx.files.deps:
         add_input(f)
 
     vlt_file = ctx.actions.declare_file(hdl_toplevel + ".vlt")
@@ -223,7 +220,7 @@ def _verilator_model_impl(ctx):
 verilator_model = rule(
     doc = """Builds a standalone Verilator model.
 
-    This rule takes a verilog source file and a toplevel module name and
+    This rule takes a verilog source files and a toplevel module name and
     builds a verilator model.
 
     It returns a DefaultInfo provider with an executable that can be run
@@ -233,7 +230,8 @@ verilator_model = rule(
         hdl_toplevel: The name of the toplevel module.
         verilog_sources: The verilog source file(s) to build the model from.
         cflags: A list of flags to pass to the compiler.
-        deps: Additional C++/DPI dependencies (CcInfo).
+        deps: Additional C++/DPI dependencies.
+        include_dirs: Directories to be included during build using `+incdir`.
     """,
     implementation = _verilator_model_impl,
     attrs = {

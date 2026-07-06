@@ -157,8 +157,6 @@ coralnpu_repos2()
 
 load("@rules_foreign_cc//foreign_cc:repositories.bzl", "rules_foreign_cc_dependencies")
 
-# This sets up some common toolchains for building targets. For more details, please see
-# https://bazelbuild.github.io/rules_foreign_cc/0.13.0/flatten.html#rules_foreign_cc_dependencies
 rules_foreign_cc_dependencies()
 load("@bazel_skylib//:workspace.bzl", "bazel_skylib_workspace")
 

@@ -16,6 +16,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+from itertools import chain
 from pathlib import Path
 from typing import IO, TypedDict
 
@@ -55,12 +56,6 @@ def write_entry(
     seen: set[Path],
     test_info_map: TestInfoMap,
 ) -> None:
-    """Append a test to the batch file.
-
-    Duplicate and denylisted tests are skipped. Metadata describing each
-    scheduled test is recorded in ``test_info_map`` for later processing.
-    """
-
     if elf_path in seen or label in DENYLIST:
         return
 
@@ -104,15 +99,9 @@ def build_batch_file(
     riscv_dirs: list[Path],
     coralnpu_elfs: list[tuple[Path, str]],
 ) -> TestInfoMap:
-    """Generate the simulator batch file.
-
-    The returned mapping contains metadata for every scheduled regression
-    test keyed by its Bazel label.
-    """
-
     seen: set[Path] = set()
     test_info_map: TestInfoMap = {}
-
+    riscv_test_elfs = []
     with batch_path.open("w") as batch_file:
         for directory in riscv_dirs:
             for elf in sorted(directory.rglob("*")):
@@ -123,16 +112,9 @@ def build_batch_file(
                     continue
 
                 label = f"//third_party/riscv-tests:{elf.name}"
-                write_entry(
-                    batch_file,
-                    elf,
-                    f"{label_to_fname(label)}.log",
-                    label,
-                    seen,
-                    test_info_map,
-                )
+                riscv_test_elfs.append((elf, label))
 
-        for elf_path, label in coralnpu_elfs:
+        for elf_path, label in chain(coralnpu_elfs, riscv_test_elfs):
             write_entry(
                 batch_file,
                 elf_path,

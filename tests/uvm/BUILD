@@ -88,11 +88,9 @@ verilator_model(
         "--timescale 1ns/1ps",
     ],
     hdl_toplevel = "coralnpu_tb_top",
-    verilog_sources = ["//hdl/chisel/src/coralnpu:rvv_core_mini_verification_axi_cc_library_emit_verilog_single_sv"],
+    verilog_sources = ["//hdl/chisel/src/coralnpu:rvv_core_mini_verification_axi_cc_library_emit_verilog_single_sv", ":source_files"],
     include_dirs = [":include_dirs"],
-    include_dirs_deps = [":include_dirs_deps"],
-    source_files = [":source_files"],
-    source_file_deps = ["//hdl/verilog:dpi_files"],
+    deps = [":include_dirs_deps", "//hdl/verilog:dpi_files"],
     coralnpu_mpact_lib = ":coralnpu_cosim_lib_static_archive",
 )
 
