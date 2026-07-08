@@ -36,6 +36,13 @@ Coral NPU offers the following top-level feature set:
 * Python 3.9-3.12 (3.13 support is in progress)
 * [SRecord](https://srecord.sourceforge.net/)
 
+## Verification & Testing
+
+For details on our testing methodologies and how to run or write tests, see the corresponding test READMEs:
+
+* [Cocotb Tests (RTL & Netlist simulation)](tests/cocotb/README.md)
+* [UVM Testbench (Co-simulation)](tests/uvm/README.md)
+
 ## Quick Start
 
 ```bash

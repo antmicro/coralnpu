@@ -29,8 +29,17 @@ use GitHub pull requests for this purpose. Consult
 [GitHub Help](https://help.github.com/articles/about-pull-requests/) for more
 information on using pull requests.
 
-## Lint
+## Lint and Quality Checks
 
-Run `utils/run_linters.sh` before sending a pull request.  You can use our git
-hooks automatically by running `git config core.hooksPath .githooks` from the
-project root.
+Before sending a pull request, run the following verification scripts:
+
+- **Linters**: Run `utils/run_linters.sh` to check formatting.
+- **Macro Signatures**: Run `utils/check_macro_signatures.py` to ensure
+    parameter parity between the regular and split VCS simulation macros.
+
+You can configure git to run these quality checks automatically before pushing
+by running the following command from the project root:
+
+```bash
+git config core.hooksPath .githooks
+```

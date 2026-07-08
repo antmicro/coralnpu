@@ -33,3 +33,12 @@ py_test(
         requirement("pyelftools"),
     ],
 )
+
+py_test(
+    name = "check_macro_signatures_test",
+    srcs = ["check_macro_signatures.py"],
+    data = [
+        "//rules:coco_tb.bzl",
+    ],
+    main = "check_macro_signatures.py",
+)

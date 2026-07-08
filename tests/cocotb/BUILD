@@ -15,7 +15,7 @@
 load("@coralnpu_hw//third_party/python:requirements.bzl", "requirement")
 load("@gemma_deps//:requirements.bzl", gemma_requirement = "requirement")
 load("@rules_pkg//:pkg.bzl", "pkg_zip")
-load("//rules:coco_tb.bzl", "cocotb_test_suite", "verilator_cocotb_model")
+load("//rules:coco_tb.bzl", "cocotb_test_suite", "vcs_test_macro_smoke_test", "verilator_cocotb_model")
 load("//rules:coralnpu_v2.bzl", "coralnpu_v2_binary")
 load("//rules:utils.bzl", "template_rule")
 load(
@@ -972,3 +972,25 @@ exports_files([
     "rvv_ml_ops_cocotb_test.py",
     "rvv_flashattention_cocotb_test.py",
 ])
+
+# Smoke test to prevent signature divergence between regular and split VCS flows.
+vcs_test_macro_smoke_test(
+    name = "vcs_flow_smoke_test",
+    size = "small",
+    timeout = "short",
+    data = ["//tests/cocotb/rvv:rvv_assem_tests"],
+    extra_env = ["TEST_VAR=smoke_value"],
+    flaky = True,
+    hdl_toplevel = "RvvCoreMiniAxi",
+    local = True,
+    seed = "12345",
+    shard_count = 2,
+    test_args = ["+CLOCK_NS=2.0"],
+    test_module = ["rvv_assembly_cocotb_test.py"],
+    testcase = ["test_addi"],
+    verilog_sources = ["//hdl/chisel/src/coralnpu:rvv_core_mini_axi_cc_library_verilog"],
+    waves = False,
+    deps = [
+        "//coralnpu_test_utils:core_mini_axi_sim_interface",
+    ],
+)

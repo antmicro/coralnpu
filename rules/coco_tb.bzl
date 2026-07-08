@@ -721,6 +721,10 @@ def vcs_simulation_split_test(
         **kwargs: Additional arguments.
     """
 
+    # Pop common attributes to forward to helper targets
+    testonly = kwargs.pop("testonly", False)
+    visibility = kwargs.pop("visibility", None)
+
     tags = list(kwargs.pop("tags", []))
     if "vcs" not in tags:
         tags.append("vcs")
@@ -733,15 +737,13 @@ def vcs_simulation_split_test(
     if "requires-network" not in run_tags:
         run_tags.append("requires-network")
 
-    test_kwargs = {}
-    for attr_name in ["timeout", "flaky", "size", "shard_count", "local"]:
-        if attr_name in kwargs:
-            test_kwargs[attr_name] = kwargs.pop(attr_name)
-    if "size" not in test_kwargs:
-        test_kwargs["size"] = "medium"
-
-    if test_kwargs.get("local") and "local" not in run_tags:
+    # Check local without removing it from kwargs so it gets forwarded to vcs_simulation_test
+    local = kwargs.get("local", False)
+    if local and "local" not in run_tags:
         run_tags.append("local")
+
+    if "size" not in kwargs:
+        kwargs["size"] = "medium"
 
     seed = kwargs.pop("seed", "")
     if type(seed) == "list":
@@ -752,6 +754,11 @@ def vcs_simulation_split_test(
     if model:
         full_data.append(model)
 
+    # TODO: The underlying vcs_simulation_run rule only supports a single
+    # test_module_file. If a list of modules is provided, we only pick the first
+    # one. This diverges from vcs_cocotb_test, which supports multiple test
+    # modules. If multiple modules are needed for split/netlist tests in the
+    # future, the underlying rule must be updated to support a list.
     tm_label = test_module[0] if type(test_module) == "list" else test_module
     full_data.append(tm_label)
 
@@ -765,7 +772,9 @@ def vcs_simulation_split_test(
             "@rules_hdl//cocotb:cocotb_wrapper",
             "@bazel_tools//tools/python/runfiles",
         ],
-        tags = ["manual"],
+        tags = run_tags,
+        testonly = testonly,
+        visibility = visibility,
     )
 
     py_binary(
@@ -774,7 +783,9 @@ def vcs_simulation_split_test(
         main = "@coralnpu_hw//rules:sim_runner.py",
         deps = deps + [":" + name + "_sim_runner_lib"],
         data = full_data,
-        tags = ["manual"],
+        tags = run_tags,
+        testonly = testonly,
+        visibility = visibility,
     )
 
     env_dict = {}
@@ -783,9 +794,16 @@ def vcs_simulation_split_test(
             k, v = entry.split("=", 1)
             env_dict[k] = v
 
-    tc = kwargs.get("testcase", "")
+    # Pop testcase so it is not forwarded to vcs_simulation_test
+    tc = kwargs.pop("testcase", "")
     if type(tc) == "list":
         tc = tc[0] if tc else ""
+
+    # Discard compilation/build attributes that are not needed by the run-only test target.
+    # vcs_simulation_test is a strict rule and will fail at load-time if custom
+    # compilation attributes (like build_args or defines) are forwarded to it.
+    kwargs.pop("build_args", None)
+    kwargs.pop("defines", None)
 
     vcs_simulation_run(
         name = name + "_run",
@@ -799,13 +817,17 @@ def vcs_simulation_split_test(
         seed = str(seed),
         waves = waves,
         tags = run_tags,
+        testonly = testonly,
+        visibility = visibility,
     )
 
     vcs_simulation_test(
         name = name,
         run_target = ":" + name + "_run",
         tags = tags,
-        **test_kwargs
+        testonly = testonly,
+        visibility = visibility,
+        **kwargs
     )
 
 def vcs_cocotb_test(
@@ -837,6 +859,12 @@ def vcs_cocotb_test(
     to this function or its underlying @rules_hdl rule, you MUST also update
     _vcs_simulation_run_impl above to ensure the split-test flow remains in sync!
     """
+    testonly = kwargs.pop("testonly", False)
+    visibility = kwargs.pop("visibility", None)
+
+    if "size" not in kwargs:
+        kwargs["size"] = "medium"
+
     tags = list(kwargs.pop("tags", []))
     tags.append("vcs")
     tags.append("cpu:2")
@@ -859,6 +887,8 @@ def vcs_cocotb_test(
         ],
         data = data,
         tags = tags,
+        testonly = testonly,
+        visibility = visibility,
     )
 
     extra_env = list(kwargs.pop("extra_env", []))
@@ -892,6 +922,8 @@ def vcs_cocotb_test(
         # cocotb_test. While this works, it's redundant. Since Patch 0011 adds data support to cocotb_test,
         # we should eventually consolidate data handling there.
         data = data + verilog_model_files,
+        testonly = testonly,
+        visibility = visibility,
         **kwargs
     )
 
@@ -1196,3 +1228,38 @@ def cocotb_test_suite(name, testcases, simulators = ["verilator"], coverage = Fa
             )
         else:
             fail("Unknown simulator: {}".format(sim))
+
+def vcs_test_macro_smoke_test(name, verilog_sources, **kwargs):
+    """Smoke test to ensure vcs_cocotb_test and vcs_simulation_split_test signatures match.
+
+    This macro instantiates both flows with dummy targets to catch signature
+    mismatches at Bazel load time. Targets are marked 'manual' to avoid execution.
+    """
+    tags = kwargs.pop("tags", [])
+    if "manual" not in tags:
+        tags.append("manual")
+
+    # Define a dummy model to pass to both tests
+    vcs_cocotb_model(
+        name = name + "_dummy_model",
+        verilog_sources = verilog_sources,
+        hdl_toplevel = kwargs.get("hdl_toplevel"),
+        tags = tags,
+    )
+
+    # Test regular flow
+    vcs_cocotb_test(
+        name = name + "_regular_smoke",
+        model = ":" + name + "_dummy_model",
+        tags = tags,
+        **kwargs
+    )
+
+    # Test split flow
+    vcs_simulation_split_test(
+        name = name + "_split_smoke",
+        model = ":" + name + "_dummy_model",
+        verilog_sources = verilog_sources,
+        tags = tags,
+        **kwargs
+    )
