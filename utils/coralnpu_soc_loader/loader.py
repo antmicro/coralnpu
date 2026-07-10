@@ -19,10 +19,12 @@ import time
 from elftools.elf.elffile import ELFFile
 from coralnpu_hw.utils.coralnpu_soc_loader.spi_driver import SPIDriver
 
+
 def write_line_via_spi(driver: SPIDriver, address: int, data: int):
     """Writes a 16-byte bus line to a given address via the SPI bridge."""
     data_bytes = data.to_bytes(16, byteorder='little')
     driver.v2_write(address, data_bytes)
+
 
 def write_lines_via_spi(driver: SPIDriver, address: int, data_bytes: bytes):
     """Writes multiple 16-byte bus lines to a given address via the SPI bridge."""
@@ -32,11 +34,13 @@ def write_lines_via_spi(driver: SPIDriver, address: int, data_bytes: bytes):
         return
     driver.v2_write(address, data_bytes)
 
+
 def read_line_via_spi(driver: SPIDriver, address: int) -> int:
     """Reads a single 128-bit line from memory via SPI."""
     read_data_bytes = driver.v2_read(address, 1)
     read_data = int.from_bytes(bytes(read_data_bytes), byteorder='little')
     return read_data
+
 
 def write_word_via_spi(driver: SPIDriver, address: int, data: int):
     """Writes a 32-bit value by performing a read-modify-write on a 16-byte line."""
@@ -55,21 +59,27 @@ def write_word_via_spi(driver: SPIDriver, address: int, data: int):
     # Write the modified line back
     write_line_via_spi(driver, line_addr, updated_data)
 
+
 def main():
-    parser = argparse.ArgumentParser(description="Load an ELF binary to the CoralNPU SoC.")
+    parser = argparse.ArgumentParser(
+        description="Load an ELF binary to the CoralNPU SoC."
+    )
     parser.add_argument("binary", help="Path to the ELF binary to load.")
     parser.add_argument(
         "--itcm_size_kbytes", type=int, default=8, help="ITCM size in KBytes."
     )
     parser.add_argument(
-        "--dtcm_size_kbytes", type=int, default=32, help="DTCM size in KBytes."
+        "--dtcm_size_kbytes",
+        type=int,
+        default=32,
+        help="DTCM size in KBytes."
     )
     parser.add_argument(
         "--csr_only",
         action="store_true",
         help="Skip ELF segment writes; only fire the kickoff CSR sequence "
-             "(PC, clock-gate release, reset release). Use when segments have "
-             "already been backdoor-loaded by the simulator.",
+        "(PC, clock-gate release, reset release). Use when segments have "
+        "already been backdoor-loaded by the simulator.",
     )
     args = parser.parse_args()
 
@@ -79,7 +89,9 @@ def main():
 
         # Send a few idle clock cycles to flush any reset synchronizers
         # in the DUT before starting the first real transaction.
-        logging.warning("LOADER: Sending initial idle clocks to flush reset...")
+        logging.warning(
+            "LOADER: Sending initial idle clocks to flush reset..."
+        )
         driver.idle_clocking(20)
 
         entry_point = 0
@@ -100,7 +112,9 @@ def main():
 
                     paddr = segment['p_paddr']
                     data = segment.data()
-                    logging.warning(f"LOADER: Loading segment to address 0x{paddr:08x}, size {len(data)} bytes")
+                    logging.warning(
+                        f"LOADER: Loading segment to address 0x{paddr:08x}, size {len(data)} bytes"
+                    )
 
                     # Load data in pages (up to some reasonable size)
                     original_len = len(data)
@@ -111,13 +125,19 @@ def main():
                     page_size = 4096
                     for i in range(0, len(data), page_size):
                         page_addr = paddr + i
-                        page_data_bytes = data[i:i+page_size]
+                        page_data_bytes = data[i:i + page_size]
 
                         write_lines_via_spi(driver, page_addr, page_data_bytes)
 
-                        bytes_written = min(i + len(page_data_bytes), original_len)
-                        logging.warning(f"  ... wrote {bytes_written}/{original_len} bytes")
-                    logging.warning(f"  ... wrote {original_len}/{original_len} bytes")
+                        bytes_written = min(
+                            i + len(page_data_bytes), original_len
+                        )
+                        logging.warning(
+                            f"  ... wrote {bytes_written}/{original_len} bytes"
+                        )
+                    logging.warning(
+                        f"  ... wrote {original_len}/{original_len} bytes"
+                    )
 
                 logging.warning("LOADER: Binary loaded successfully.")
 
@@ -126,13 +146,17 @@ def main():
         # In other configurations, CSRs sit after DTCM.
         csr_base_addr = 0x30000
         if args.itcm_size_kbytes > 8 or args.dtcm_size_kbytes > 32:
-             # Assume highmem layout
-             csr_base_addr = (args.itcm_size_kbytes + args.dtcm_size_kbytes) * 1024
+            # Assume highmem layout
+            csr_base_addr = (
+                args.itcm_size_kbytes + args.dtcm_size_kbytes
+            ) * 1024
 
         coralnpu_pc_csr_addr = csr_base_addr + 4
         coralnpu_reset_csr_addr = csr_base_addr
 
-        logging.warning(f"LOADER: Using CSR base address 0x{csr_base_addr:08x}")
+        logging.warning(
+            f"LOADER: Using CSR base address 0x{csr_base_addr:08x}"
+        )
 
         logging.warning(f"LOADER: Programming start PC to 0x{entry_point:08x}")
         write_word_via_spi(driver, coralnpu_pc_csr_addr, entry_point)
@@ -151,6 +175,7 @@ def main():
         if driver:
             logging.info("LOADER: Closing connection.")
             driver.close()
+
 
 if __name__ == "__main__":
     main()

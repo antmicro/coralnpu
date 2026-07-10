@@ -68,7 +68,9 @@ async def setup_dut(dut):
 
     # Start the SPI Master peripheral clock
     # This clock drives the SPI logic in the SpiMaster module
-    spim_clock = Clock(dut.io_external_ports_spim_clk_i, 100, "ns")  # Slower clock
+    spim_clock = Clock(
+        dut.io_external_ports_spim_clk_i, 100, "ns"
+    )  # Slower clock
     cocotb.start_soon(spim_clock.start())
 
     # Reset the DUT
@@ -144,7 +146,9 @@ async def test_spi_master_basic_tx(dut):
         dut._log.info("Waiting for CSB low...")
         timeout_ns = 5000
         try:
-            await with_timeout(FallingEdge(dut.io_external_ports_spim_csb), timeout_ns, "ns")
+            await with_timeout(
+                FallingEdge(dut.io_external_ports_spim_csb), timeout_ns, "ns"
+            )
             dut._log.info("CSB went low!")
         except Exception as e:
             dut._log.error(
@@ -190,11 +194,15 @@ async def test_spi_master_half_duplex_rx(dut):
 
     # 1. Set CSID and CSMODE (Auto)
     await host_if.host_put(
-        create_a_channel_req(address=SPI_REG_CSID, data=0, mask=0xF, width=host_if.width)
+        create_a_channel_req(
+            address=SPI_REG_CSID, data=0, mask=0xF, width=host_if.width
+        )
     )
     await host_if.host_get_response()
     await host_if.host_put(
-        create_a_channel_req(address=SPI_REG_CSMODE, data=0, mask=0xF, width=host_if.width)
+        create_a_channel_req(
+            address=SPI_REG_CSMODE, data=0, mask=0xF, width=host_if.width
+        )
     )
     await host_if.host_get_response()
 
@@ -207,7 +215,10 @@ async def test_spi_master_half_duplex_rx(dut):
     dut._log.info(f"Enabling SPI Master with HDRX, CONTROL=0x{ctrl_val:X}")
     await host_if.host_put(
         create_a_channel_req(
-            address=SPI_REG_CONTROL, data=ctrl_val, mask=0xF, width=host_if.width
+            address=SPI_REG_CONTROL,
+            data=ctrl_val,
+            mask=0xF,
+            width=host_if.width
         )
     )
     await host_if.host_get_response()
@@ -216,7 +227,7 @@ async def test_spi_master_half_duplex_rx(dut):
     dut._log.info("Waiting for CSB low (automatic start)...")
     await FallingEdge(dut.io_external_ports_spim_csb)
     dut._log.info("CSB went low automatically!")
-    
+
     # Wait for one byte to finish (CSB goes high in Auto mode after one byte)
     await RisingEdge(dut.io_external_ports_spim_csb)
     dut._log.info("First byte transaction complete.")
@@ -262,12 +273,15 @@ async def test_spi_master_half_duplex_tx(dut):
     dut._log.info(f"Enabling SPI Master with HDTX, CONTROL=0x{ctrl_val:X}")
     await host_if.host_put(
         create_a_channel_req(
-            address=SPI_REG_CONTROL, data=ctrl_val, mask=0xF, width=host_if.width
+            address=SPI_REG_CONTROL,
+            data=ctrl_val,
+            mask=0xF,
+            width=host_if.width
         )
     )
     await host_if.host_get_response()
 
-    # 2. Write 8 bytes to TXDATA. 
+    # 2. Write 8 bytes to TXDATA.
     # RX FIFO size is 4. If RX data wasn't being ignored, this would eventually
     # stall the master and we'd see 'busy' staying high.
     for i in range(8):
@@ -277,7 +291,7 @@ async def test_spi_master_half_duplex_tx(dut):
             )
         )
         await host_if.host_get_response()
-        
+
         # Poll busy bit (bit 0) until it goes low
         while True:
             await host_if.host_put(
@@ -293,7 +307,9 @@ async def test_spi_master_half_duplex_tx(dut):
 
     # 3. Verify RX FIFO is STILL empty (bit 1 of STATUS is 1)
     await host_if.host_put(
-        create_a_channel_req(address=SPI_REG_STATUS, is_read=True, width=host_if.width)
+        create_a_channel_req(
+            address=SPI_REG_STATUS, is_read=True, width=host_if.width
+        )
     )
     resp = await host_if.host_get_response()
     status = int(resp["data"])

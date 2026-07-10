@@ -41,7 +41,8 @@ def main():
     # Cocotb changes the current working directory to sim_build during simulation,
     # so relative paths in PYTHONPATH would resolve incorrectly.
     os.environ["PYTHONPATH"] = os.pathsep.join(
-        os.path.abspath(p) if p else os.getcwd() for p in sys.path)
+        os.path.abspath(p) if p else os.getcwd() for p in sys.path
+    )
 
     # Convert relative paths in +fsdbfile+ to absolute paths because cocotb changes CWD to sim_build.
     execroot = os.getcwd()
@@ -55,7 +56,8 @@ def main():
                     path = p[len("+fsdbfile+"):]
                     if not os.path.isabs(path):
                         p = "+fsdbfile+" + os.path.abspath(
-                            os.path.join(execroot, path))
+                            os.path.join(execroot, path)
+                        )
                 new_parts.append(p)
             sys.argv[i + 1] = shlex.join(new_parts)
             break
@@ -71,8 +73,8 @@ def main():
 
         abs_dir = os.path.dirname(module_abs_path)
         sys.path.insert(0, abs_dir)
-        os.environ["PYTHONPATH"] = abs_dir + os.pathsep + os.environ.get(
-            "PYTHONPATH", "")
+        os.environ["PYTHONPATH"
+                   ] = abs_dir + os.pathsep + os.environ.get("PYTHONPATH", "")
 
         module_name = os.path.basename(module_abs_path)
         if module_name.endswith(".py"):
@@ -92,7 +94,6 @@ def main():
             resolved_file = candidate
     except ImportError:
         pass
-
 
     # Workaround: set LD_LIBRARY_PATH if resolved
     if resolved_file:

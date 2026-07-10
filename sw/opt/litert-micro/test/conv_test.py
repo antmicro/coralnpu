@@ -7,7 +7,12 @@ from coralnpu_v2_sim_utils import CoralNPUV2Simulator
 
 
 def run_test_case(
-    npu_sim, elf_file, input_shape, filter_shape, stride, padding_type="VALID"
+    npu_sim,
+    elf_file,
+    input_shape,
+    filter_shape,
+    stride,
+    padding_type="VALID"
 ):
     # Symbols to resolve
     symbols = [
@@ -35,7 +40,9 @@ def run_test_case(
         "heartbeat",
     ]
 
-    entry_point, symbol_map = npu_sim.get_elf_entry_and_symbol(elf_file, symbols)
+    entry_point, symbol_map = npu_sim.get_elf_entry_and_symbol(
+        elf_file, symbols
+    )
 
     # Initialize simulator
     npu_sim.load_program(elf_file, entry_point)
@@ -56,9 +63,13 @@ def run_test_case(
         out_h = (input_shape[1] + stride_height - 1) // stride_height
         out_w = (input_shape[2] + stride_width - 1) // stride_width
         pad_h = (
-            max(0, (out_h - 1) * stride_height + filter_height - input_shape[1]) // 2
+            max(
+                0, (out_h - 1) * stride_height + filter_height - input_shape[1]
+            ) // 2
         )
-        pad_w = max(0, (out_w - 1) * stride_width + filter_width - input_shape[2]) // 2
+        pad_w = max(
+            0, (out_w - 1) * stride_width + filter_width - input_shape[2]
+        ) // 2
     else:  # VALID
         out_h = (input_shape[1] - filter_height) // stride_height + 1
         out_w = (input_shape[2] - filter_width) // stride_width + 1
@@ -74,12 +85,18 @@ def run_test_case(
 
     # Generate random data
     input_data = np.random.randint(-128, 127, size=input_shape, dtype=np.int8)
-    filter_data = np.random.randint(-128, 127, size=filter_shape, dtype=np.int8)
-    bias_data = np.random.randint(-1000, 1000, size=(output_depth,), dtype=np.int32)
-    per_channel_multiplier = np.random.randint(
-        1073741824, 2147483647, size=(output_depth,), dtype=np.int32
+    filter_data = np.random.randint(
+        -128, 127, size=filter_shape, dtype=np.int8
     )
-    per_channel_shift = np.random.randint(-10, -1, size=(output_depth,), dtype=np.int32)
+    bias_data = np.random.randint(
+        -1000, 1000, size=(output_depth, ), dtype=np.int32
+    )
+    per_channel_multiplier = np.random.randint(
+        1073741824, 2147483647, size=(output_depth, ), dtype=np.int32
+    )
+    per_channel_shift = np.random.randint(
+        -10, -1, size=(output_depth, ), dtype=np.int32
+    )
 
     # Helper to write data
     def write_symbol_data(name, data):
@@ -148,7 +165,9 @@ def run_test_case(
     if opt_cycles > 0:
         print(f"  Speedup: {ref_cycles / opt_cycles:.2f}x")
 
-    opt_out = npu_sim.read_memory(symbol_map.get("output_data"), np.prod(output_shape))
+    opt_out = npu_sim.read_memory(
+        symbol_map.get("output_data"), np.prod(output_shape)
+    )
     opt_out = np.frombuffer(opt_out, dtype=np.int8)
 
     # Verify
@@ -168,31 +187,71 @@ def run_test_case(
 def run_conv_sim_test():
     npu_sim = CoralNPUV2Simulator(highmem_ld=True)
     r = runfiles.Create()
-    elf_file = r.Rlocation("coralnpu_hw/sw/opt/litert-micro/test/conv_test.elf")
+    elf_file = r.Rlocation(
+        "coralnpu_hw/sw/opt/litert-micro/test/conv_test.elf"
+    )
 
     if not os.path.exists(elf_file):
         raise FileNotFoundError(f"ELF file not found: {elf_file}")
 
     test_cases = [
         # 1. Conv_4_4_16_StrideN (ic <= 16)
-        {"input": [1, 10, 10, 16], "filter": [16, 4, 4, 16], "stride": (1, 1)},
-        {"input": [1, 10, 10, 16], "filter": [16, 4, 4, 16], "stride": (2, 2)},
-        {"input": [1, 10, 10, 16], "filter": [48, 4, 4, 16], "stride": (1, 1)},
+        {
+            "input": [1, 10, 10, 16],
+            "filter": [16, 4, 4, 16],
+            "stride": (1, 1)
+        },
+        {
+            "input": [1, 10, 10, 16],
+            "filter": [16, 4, 4, 16],
+            "stride": (2, 2)
+        },
+        {
+            "input": [1, 10, 10, 16],
+            "filter": [48, 4, 4, 16],
+            "stride": (1, 1)
+        },
         # 2. Conv_4_4_48_Stride1 (ic <= 48, stride 1)
-        {"input": [1, 10, 10, 48], "filter": [16, 4, 4, 48], "stride": (1, 1)},
+        {
+            "input": [1, 10, 10, 48],
+            "filter": [16, 4, 4, 48],
+            "stride": (1, 1)
+        },
         # 3. Conv_48_4_4_48 (ic=48, oc=48)
-        {"input": [1, 10, 10, 48], "filter": [48, 4, 4, 48], "stride": (1, 1)},
-        {"input": [1, 10, 10, 48], "filter": [48, 4, 4, 48], "stride": (2, 2)},
+        {
+            "input": [1, 10, 10, 48],
+            "filter": [48, 4, 4, 48],
+            "stride": (1, 1)
+        },
+        {
+            "input": [1, 10, 10, 48],
+            "filter": [48, 4, 4, 48],
+            "stride": (2, 2)
+        },
         # 4. Conv2D_4x4 (Generic 4x4)
-        {"input": [1, 8, 8, 32], "filter": [32, 4, 4, 32], "stride": (1, 1)},
-        {"input": [1, 8, 8, 16], "filter": [48, 4, 4, 16], "stride": (1, 1)},
+        {
+            "input": [1, 8, 8, 32],
+            "filter": [32, 4, 4, 32],
+            "stride": (1, 1)
+        },
+        {
+            "input": [1, 8, 8, 16],
+            "filter": [48, 4, 4, 16],
+            "stride": (1, 1)
+        },
         # 5. Fallback (fh=3, fw=3)
-        {"input": [1, 8, 8, 16], "filter": [16, 3, 3, 16], "stride": (1, 1)},
+        {
+            "input": [1, 8, 8, 16],
+            "filter": [16, 3, 3, 16],
+            "stride": (1, 1)
+        },
     ]
 
     for tc in test_cases:
         npu_sim = CoralNPUV2Simulator(highmem_ld=True)
-        run_test_case(npu_sim, elf_file, tc["input"], tc["filter"], tc["stride"])
+        run_test_case(
+            npu_sim, elf_file, tc["input"], tc["filter"], tc["stride"]
+        )
 
 
 if __name__ == "__main__":

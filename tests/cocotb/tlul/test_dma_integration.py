@@ -31,9 +31,8 @@ DMA_XFER_REMAIN = DMA_BASE + 0x10
 # SRAM base
 SRAM_BASE = 0x20000000
 
+
 # --- Helpers ---
-
-
 async def setup_dut(dut, host_if):
     """Common setup: clocks and reset."""
     clock = Clock(dut.io_clk_i, 10, "ns")
@@ -89,13 +88,11 @@ def pack_descriptor_word0_3(
     next_desc=0,
 ):
     """Pack the first 16 bytes of a descriptor into 4 x 32-bit words."""
-    flags = (
-        (xfer_len & 0xFFFFFF)
-        | ((xfer_width & 0x7) << 24)
-        | ((1 if src_fixed else 0) << 27)
-        | ((1 if dst_fixed else 0) << 28)
-        | ((1 if poll_en else 0) << 29)
-    )
+    flags = ((xfer_len & 0xFFFFFF)
+             | ((xfer_width & 0x7) << 24)
+             | ((1 if src_fixed else 0) << 27)
+             | ((1 if dst_fixed else 0) << 28)
+             | ((1 if poll_en else 0) << 29))
     return [src_addr, dst_addr, flags, next_desc]
 
 
@@ -247,7 +244,9 @@ async def test_dma_descriptor_chain(dut):
         await tl_write(host_if, src1 + i * 4, 0xBB000000 + i)
 
     # Descriptor 0: 8 bytes src0->dst0, chains to desc1
-    await write_descriptor(host_if, desc0, src0, dst0, 8, xfer_width=2, next_desc=desc1)
+    await write_descriptor(
+        host_if, desc0, src0, dst0, 8, xfer_width=2, next_desc=desc1
+    )
     # Descriptor 1: 8 bytes src1->dst1, end of chain
     await write_descriptor(host_if, desc1, src1, dst1, 8, xfer_width=2)
 

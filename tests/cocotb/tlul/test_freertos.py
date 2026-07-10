@@ -71,13 +71,19 @@ async def test_freertos(dut):
                 )
             elif int(req["opcode"]) == 4:
                 await uart1_if.device_respond(
-                    opcode=1, param=0, size=req["size"], source=req["source"], data=0
+                    opcode=1,
+                    param=0,
+                    size=req["size"],
+                    source=req["source"],
+                    data=0
                 )
 
     cocotb.start_soon(uart1_responder())
 
     r = runfiles.Create()
-    elf_path = r.Rlocation("coralnpu_hw/tests/cocotb/freertos_app/freertos_app.elf")
+    elf_path = r.Rlocation(
+        "coralnpu_hw/tests/cocotb/freertos_app/freertos_app.elf"
+    )
     assert elf_path, "Could not find freertos_app.elf"
 
     with open(elf_path, "rb") as f:
@@ -92,7 +98,10 @@ async def test_freertos(dut):
 
     # Program start PC
     write_txn = create_a_channel_req(
-        address=coralnpu_pc_csr_addr, data=entry_point, mask=0xF, width=host_if.width
+        address=coralnpu_pc_csr_addr,
+        data=entry_point,
+        mask=0xF,
+        width=host_if.width
     )
     await host_if.host_put(write_txn)
     await host_if.host_get_response()
@@ -128,7 +137,7 @@ async def test_freertos(dut):
         # Check if we have seen both tasks after 'S'
         if "S" in captured_output:
             s_index = captured_output.index("S")
-            after_s = captured_output[s_index + 1 :]
+            after_s = captured_output[s_index + 1:]
             if "1" in after_s and "2" in after_s:
                 dut._log.info(
                     f"Detected task interleaving after {cycles_elapsed} cycles."
@@ -142,7 +151,7 @@ async def test_freertos(dut):
     assert "2" in captured_output, "Task 2 did not run!"
 
     s_index = captured_output.index("S")
-    after_s = captured_output[s_index + 1 :]
+    after_s = captured_output[s_index + 1:]
     assert "1" in after_s and "2" in after_s, "Context switching failed!"
 
     dut._log.info("FreeRTOS test passed.")

@@ -41,6 +41,7 @@ from coralnpu_hw.coralnpu_test_utils.ftdi_spi_master import FtdiSpiMaster
 if "BUILD_WORKSPACE_DIRECTORY" in os.environ:
     os.chdir(os.environ["BUILD_WORKSPACE_DIRECTORY"])
 
+
 class MatmulRunner:
     """Runs a matrix multiplication test on the CoralNPU hardware."""
 
@@ -107,8 +108,12 @@ class MatmulRunner:
                     print(f"  Found symbol '{sym.name}' at 0x{addr:x}")
                     sym_objects[sym.name] = sym
 
-        if not all([self.addr_lhs, self.addr_rhs, self.addr_result, self.addr_lhs_rows, self.addr_rhs_cols, self.addr_inner]) or self.entry_point is None:
-            raise ValueError("Could not find all required symbols in ELF file.")
+        if not all([self.addr_lhs, self.addr_rhs, self.addr_result,
+                    self.addr_lhs_rows, self.addr_rhs_cols, self.addr_inner]
+                   ) or self.entry_point is None:
+            raise ValueError(
+                "Could not find all required symbols in ELF file."
+            )
 
         # Extract default values for dimensions from section data
         import struct
@@ -127,8 +132,12 @@ class MatmulRunner:
         """Generates input matrices and a golden output matrix."""
         print("Generating test data...")
         # Using int8 for the input matrices
-        self.lhs_input = np.random.randint(-128, 127, size=(self.lhs_rows, self.inner), dtype=np.int8)
-        self.rhs_input = np.random.randint(-128, 127, size=(self.inner, self.rhs_cols), dtype=np.int8)
+        self.lhs_input = np.random.randint(
+            -128, 127, size=(self.lhs_rows, self.inner), dtype=np.int8
+        )
+        self.rhs_input = np.random.randint(
+            -128, 127, size=(self.inner, self.rhs_cols), dtype=np.int8
+        )
 
         # The C++ code performs the matmul as int8*int8 -> int32
         # We need to cast the inputs to a wider type before multiplication to avoid overflow
@@ -147,7 +156,9 @@ class MatmulRunner:
                 is_responsive = True
                 print("FPGA bus is responsive.")
             except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
-                print("FPGA bus is unresponsive. Attempting automatic recovery reset...")
+                print(
+                    "FPGA bus is unresponsive. Attempting automatic recovery reset..."
+                )
 
         if self.reset or not is_responsive:
             print("Performing hardware reset (toggle PROG_B)...")
@@ -158,20 +169,30 @@ class MatmulRunner:
         self._generate_data()
 
         # 1. Load ELF (without starting the core)
-        self.spi_master.load_elf(self.elf_path, start_core=False, verify=self.verify)
+        self.spi_master.load_elf(
+            self.elf_path, start_core=False, verify=self.verify
+        )
 
         # 1b. Load dimensions
-        print(f"Loading dimensions: {self.lhs_rows}x{self.inner}x{self.rhs_cols}")
+        print(
+            f"Loading dimensions: {self.lhs_rows}x{self.inner}x{self.rhs_cols}"
+        )
         self.spi_master.write_word(self.addr_lhs_rows, self.lhs_rows)
         self.spi_master.write_word(self.addr_rhs_cols, self.rhs_cols)
         self.spi_master.write_word(self.addr_inner, self.inner)
 
         # 2. Load input matrices into memory
-        print(f"Loading LHS matrix ({self.lhs_input.nbytes} bytes) to 0x{self.addr_lhs:x}")
+        print(
+            f"Loading LHS matrix ({self.lhs_input.nbytes} bytes) to 0x{self.addr_lhs:x}"
+        )
         self.spi_master.load_data(self.lhs_input.tobytes(), self.addr_lhs)
 
-        print(f"Loading RHS matrix ({self.rhs_input.nbytes} bytes) to 0x{self.addr_rhs:x}")
-        self.spi_master.load_data(self.rhs_input.flatten(order='F').tobytes(), self.addr_rhs)
+        print(
+            f"Loading RHS matrix ({self.rhs_input.nbytes} bytes) to 0x{self.addr_rhs:x}"
+        )
+        self.spi_master.load_data(
+            self.rhs_input.flatten(order='F').tobytes(), self.addr_rhs
+        )
 
         # 3. Start the core
         self.spi_master.set_entry_point(self.entry_point)
@@ -183,11 +204,17 @@ class MatmulRunner:
 
         # 5. Retrieve the output matrix
         result_size_bytes = self.golden_output.nbytes
-        print(f"Reading result matrix ({result_size_bytes} bytes) from 0x{self.addr_result:x}")
-        result_data = self.spi_master.read_data(self.addr_result, result_size_bytes)
+        print(
+            f"Reading result matrix ({result_size_bytes} bytes) from 0x{self.addr_result:x}"
+        )
+        result_data = self.spi_master.read_data(
+            self.addr_result, result_size_bytes
+        )
 
         # 6. Compare with the golden result
-        result_array = np.frombuffer(result_data, dtype=self.golden_output.dtype)
+        result_array = np.frombuffer(
+            result_data, dtype=self.golden_output.dtype
+        )
         result_array = result_array.reshape(self.golden_output.shape)
 
         print("\nVerifying result...")
@@ -196,18 +223,56 @@ class MatmulRunner:
         else:
             print("Golden:\n", self.golden_output)
             print("Received:\n", result_array)
-            raise RuntimeError("TEST FAILED: Output does not match golden reference.")
+            raise RuntimeError(
+                "TEST FAILED: Output does not match golden reference."
+            )
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Run Matrix Multiplication test on CoralNPU.")
-    parser.add_argument("elf_file", nargs="?", default=None, help="Path to the rvv_matmul.elf file. If omitted, the target will be built via Bazel.")
-    parser.add_argument("--usb-serial", required=True, help="USB serial number of the FTDI device.")
-    parser.add_argument("--ftdi-port", type=int, default=1, help="Port number of the FTDI device.")
-    parser.add_argument("--csr-base-addr", type=lambda x: int(x, 0), default=None, help="Base address for CSR registers (defaults to 0x200000 for highmem, 0x30000 for lowmem).")
-    parser.add_argument("--highmem", action="store_true", help="Use highmem target (rvv_matmul_highmem) and highmem CSR base (0x200000).")
-    parser.add_argument("--reset", action="store_true", help="Force hardware reset (toggle PROG_B) before running.")
-    parser.add_argument("--verify", action="store_true", help="Verify ELF loading by reading back memory.")
+    parser = argparse.ArgumentParser(
+        description="Run Matrix Multiplication test on CoralNPU."
+    )
+    parser.add_argument(
+        "elf_file",
+        nargs="?",
+        default=None,
+        help=
+        "Path to the rvv_matmul.elf file. If omitted, the target will be built via Bazel."
+    )
+    parser.add_argument(
+        "--usb-serial",
+        required=True,
+        help="USB serial number of the FTDI device."
+    )
+    parser.add_argument(
+        "--ftdi-port",
+        type=int,
+        default=1,
+        help="Port number of the FTDI device."
+    )
+    parser.add_argument(
+        "--csr-base-addr",
+        type=lambda x: int(x, 0),
+        default=None,
+        help=
+        "Base address for CSR registers (defaults to 0x200000 for highmem, 0x30000 for lowmem)."
+    )
+    parser.add_argument(
+        "--highmem",
+        action="store_true",
+        help=
+        "Use highmem target (rvv_matmul_highmem) and highmem CSR base (0x200000)."
+    )
+    parser.add_argument(
+        "--reset",
+        action="store_true",
+        help="Force hardware reset (toggle PROG_B) before running."
+    )
+    parser.add_argument(
+        "--verify",
+        action="store_true",
+        help="Verify ELF loading by reading back memory."
+    )
     args = parser.parse_args()
 
     elf_file = args.elf_file
@@ -215,7 +280,9 @@ def main():
         # Resolve project root
         script_dir = os.path.dirname(os.path.abspath(__file__))
         under_bazel_run = "BUILD_WORKSPACE_DIRECTORY" in os.environ
-        project_root = os.environ.get("BUILD_WORKSPACE_DIRECTORY", os.path.dirname(script_dir))
+        project_root = os.environ.get(
+            "BUILD_WORKSPACE_DIRECTORY", os.path.dirname(script_dir)
+        )
 
         target = "//tests/cocotb/rvv/ml_ops:rvv_matmul_highmem" if args.highmem else "//tests/cocotb/rvv/ml_ops:rvv_matmul"
 
@@ -228,13 +295,17 @@ def main():
             elf_file = matches[0]
             print(f"Using built ELF: {elf_file}")
         elif under_bazel_run:
-            print(f"Error: ELF file not found in bazel-out. Please build it first:")
+            print(
+                f"Error: ELF file not found in bazel-out. Please build it first:"
+            )
             print(f"  bazel build {target}")
             sys.exit(1)
         else:
             print(f"No ELF file provided. Building {target}...")
             try:
-                subprocess.run(["bazel", "build", target], cwd=project_root, check=True)
+                subprocess.run(["bazel", "build", target],
+                               cwd=project_root,
+                               check=True)
                 # Search again after build
                 matches = glob.glob(os.path.join(project_root, pattern))
                 if matches:
@@ -268,6 +339,7 @@ def main():
         import traceback
         traceback.print_exc()
         sys.exit(1)
+
 
 if __name__ == "__main__":
     main()

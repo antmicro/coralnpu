@@ -27,23 +27,28 @@ async def core_mini_rvv_tanh_gelu_mul_test(dut):
     r = runfiles.Create()
 
     # Needs highmem due to 6.29MB memory requirement for 256x2048 shape
-    fixture = await Fixture.Create(dut,
-                                   highmem=True,
-                                   ext_mem_base_addr=0x80000000,
-                                   ext_mem_size=32 * 1024 * 1024)
+    fixture = await Fixture.Create(
+        dut,
+        highmem=True,
+        ext_mem_base_addr=0x80000000,
+        ext_mem_size=32 * 1024 * 1024
+    )
 
     elf_name = "rvv_tanh_gelu_mul.elf"
     elf_path = r.Rlocation(
-        f"coralnpu_hw/tests/cocotb/rvv/ml_ops/gemma_kernels/{elf_name}")
+        f"coralnpu_hw/tests/cocotb/rvv/ml_ops/gemma_kernels/{elf_name}"
+    )
 
     if not elf_path or not os.path.exists(elf_path):
         dut._log.info(
-            f"Skipping test because ELF not found in sandbox: {elf_name}")
+            f"Skipping test because ELF not found in sandbox: {elf_name}"
+        )
         return
 
     dut._log.info(f"Loading ELF: {elf_path}")
     await fixture.load_elf_and_lookup_symbols(
-        elf_path, ["Gate", "Up", "Output", "active_elements", "cycle_count"])
+        elf_path, ["Gate", "Up", "Output", "active_elements", "cycle_count"]
+    )
 
     await fixture.core_mini_axi.reset()
 
@@ -78,8 +83,9 @@ async def core_mini_rvv_tanh_gelu_mul_test(dut):
         gelu_out = 0.5 * x * (1.0 + approx_tanh)
         expected_output = gelu_out * Up_data
 
-        await fixture.write('active_elements',
-                            np.array([total_elements], dtype=np.uint32))
+        await fixture.write(
+            'active_elements', np.array([total_elements], dtype=np.uint32)
+        )
         await fixture.write('Gate', Gate_data.flatten())
         await fixture.write('Up', Up_data.flatten())
         await fixture.write('Output', np.zeros_like(expected_output).flatten())
@@ -88,13 +94,14 @@ async def core_mini_rvv_tanh_gelu_mul_test(dut):
         npu_cycles = int((await fixture.read('cycle_count',
                                              4)).view(dtype=np.uint32)[0])
 
-        log_vector_metrics(dut, f"Tanh-GELU Mul Shape: [{token_count}, {hidden_size}]",
-                           npu_cycles, total_elements)
+        log_vector_metrics(
+            dut, f"Tanh-GELU Mul Shape: [{token_count}, {hidden_size}]",
+            npu_cycles, total_elements
+        )
 
         actual_output = (await fixture.read('Output', total_elements *
                                             4)).view(dtype=np.float32)
 
-        np.testing.assert_allclose(actual_output,
-                                   expected_output.flatten(),
-                                   rtol=1e-3,
-                                   atol=1e-3)
+        np.testing.assert_allclose(
+            actual_output, expected_output.flatten(), rtol=1e-3, atol=1e-3
+        )

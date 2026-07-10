@@ -33,9 +33,8 @@ class RunUvmRegressionTest(unittest.TestCase):
         )
         self.assertTrue(
             any(
-                fnmatch.fnmatch(
-                    "//tests/cocotb/rvv/ml_ops:rvv_float_matmul", pattern
-                )
+                fnmatch.
+                fnmatch("//tests/cocotb/rvv/ml_ops:rvv_float_matmul", pattern)
                 for pattern in denylist
             )
         )

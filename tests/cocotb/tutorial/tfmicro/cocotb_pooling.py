@@ -24,6 +24,7 @@ def tolerate(target: int, tolerance=1.2) -> int:
 
 
 class MaxPoolTest:
+
     def __init__(self, in_d, stride=2, filter_size=2, out_h=4, out_w=4):
         self.stride = stride
         self.filter_size = filter_size
@@ -59,7 +60,9 @@ class MaxPoolTest:
         )
 
         rng = np.random.default_rng()
-        input_data = rng.integers(-128, 128, self.in_shape, dtype=np.int8).flatten()
+        input_data = rng.integers(
+            -128, 128, self.in_shape, dtype=np.int8
+        ).flatten()
 
         await self.fixture.write_word("stride", self.stride)
         await self.fixture.write_word("filter_size", self.filter_size)
@@ -72,8 +75,11 @@ class MaxPoolTest:
         await self.fixture.write(
             "output_data", np.zeros([self.out_size], dtype=np.int8)
         )
-        halt_cycles = await self.fixture.run_to_halt(timeout_cycles=timeout_cycles)
-        outputs = (await self.fixture.read("output_data", self.out_size)).view(np.int8)
+        halt_cycles = await self.fixture.run_to_halt(
+            timeout_cycles=timeout_cycles
+        )
+        outputs = (await self.fixture.read("output_data",
+                                           self.out_size)).view(np.int8)
 
         # Read measured cycles from the C variables (8 bytes for uint64_t)
         data = await self.fixture.read(
@@ -83,9 +89,13 @@ class MaxPoolTest:
         return outputs, measured_cycles
 
     async def test(self, ref_target, opt_target):
-        ref_output, ref_cycles = await self.run("run_ref", tolerate(ref_target))
+        ref_output, ref_cycles = await self.run(
+            "run_ref", tolerate(ref_target)
+        )
         print(f"ref_cycles={ref_cycles}", flush=True)
-        opt_output, opt_cycles = await self.run("run_optimized", tolerate(opt_target))
+        opt_output, opt_cycles = await self.run(
+            "run_optimized", tolerate(opt_target)
+        )
         print(f"opt_cycles={opt_cycles}", flush=True)
 
         if opt_cycles > 0:

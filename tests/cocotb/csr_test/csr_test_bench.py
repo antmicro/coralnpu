@@ -28,7 +28,9 @@ async def csr_read_write_test(dut):
     cocotb.start_soon(core_mini_axi.clock.start())
 
     r = runfiles.Create()
-    elf_path = r.Rlocation("coralnpu_hw/tests/cocotb/csr_test/csr_test_program.elf")
+    elf_path = r.Rlocation(
+        "coralnpu_hw/tests/cocotb/csr_test/csr_test_program.elf"
+    )
     if not elf_path:
         raise ValueError("Could not find ELF file. Build the target first.")
 
@@ -54,11 +56,21 @@ async def csr_read_write_test(dut):
     test_4_read = int(results[7])
     test_status = int(results[8])
 
-    cocotb.log.info(f"[CSR Test] Test 1 (FCSR): written=0x{test_1_write:08x} read=0x{test_1_read:08x}")
-    cocotb.log.info(f"[CSR Test] Test 2 (FFLAGS): written=0x{test_2_write:08x} read=0x{test_2_read:08x}")
-    cocotb.log.info(f"[CSR Test] Test 3 (MSCRATCH): written=0x{test_3_write:08x} read=0x{test_3_read:08x}")
-    cocotb.log.info(f"[CSR Test] Test 4 (MSTATUSH): written=0x{test_4_write:08x} read=0x{test_4_read:08x}")
-    cocotb.log.info(f"[CSR Test] Overall status: {'PASS' if test_status == 0 else 'FAIL'}")
+    cocotb.log.info(
+        f"[CSR Test] Test 1 (FCSR): written=0x{test_1_write:08x} read=0x{test_1_read:08x}"
+    )
+    cocotb.log.info(
+        f"[CSR Test] Test 2 (FFLAGS): written=0x{test_2_write:08x} read=0x{test_2_read:08x}"
+    )
+    cocotb.log.info(
+        f"[CSR Test] Test 3 (MSCRATCH): written=0x{test_3_write:08x} read=0x{test_3_read:08x}"
+    )
+    cocotb.log.info(
+        f"[CSR Test] Test 4 (MSTATUSH): written=0x{test_4_write:08x} read=0x{test_4_read:08x}"
+    )
+    cocotb.log.info(
+        f"[CSR Test] Overall status: {'PASS' if test_status == 0 else 'FAIL'}"
+    )
 
     assert (test_1_read & test_1_write) == test_1_write, \
         f"Test 1 failed: 0x{test_1_write:08x} != 0x{test_1_read:08x}"

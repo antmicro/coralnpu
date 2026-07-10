@@ -55,5 +55,6 @@ if __name__ == "__main__":
     parser.add_argument("--variable_name", required=True)
     parser.add_argument("--name", required=True)
     args = parser.parse_args()
-    update_build_file(args.build_file, args.test_file, args.variable_name,
-                      args.name)
+    update_build_file(
+        args.build_file, args.test_file, args.variable_name, args.name
+    )

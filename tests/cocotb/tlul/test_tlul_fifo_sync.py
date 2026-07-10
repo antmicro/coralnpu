@@ -37,10 +37,9 @@ async def test_passthrough_with_spare(dut):
     device_if = TileLinkULInterface(dut, device_if_name="io_device")
 
     # Create a simple PutFullData request
-    a_data = create_a_channel_req(address=0x1000,
-                                  data=0x11223344,
-                                  mask=0xF,
-                                  width=32)
+    a_data = create_a_channel_req(
+        address=0x1000, data=0x11223344, mask=0xF, width=32
+    )
     spare_req_val = 1
     spare_rsp_val = 0
 
@@ -58,8 +57,8 @@ async def test_passthrough_with_spare(dut):
         assert req["mask"] == a_data["mask"], f"Request mask mismatch"
         assert req["data"] == a_data["data"], f"Request data mismatch"
         for field, value in a_data["user"].items():
-            assert req["user"][
-                field] == value, f"Request user.{field} mismatch"
+            assert req["user"][field
+                               ] == value, f"Request user.{field} mismatch"
 
         # Check spare request channel
         assert dut.io_spare_req_o.value == spare_req_val, "Spare request data mismatch"
@@ -72,7 +71,8 @@ async def test_passthrough_with_spare(dut):
             opcode=0,  # AccessAck
             param=0,
             size=req["size"],
-            source=req["source"])
+            source=req["source"]
+        )
 
     # Start the device model task
     device_task = cocotb.start_soon(device_model())
@@ -94,8 +94,10 @@ async def test_passthrough_with_spare(dut):
     assert response["sink"] == 0, "Response sink mismatch"
     assert response["data"] == 0, "Response data mismatch"
     assert response["error"] == 0, "Response error mismatch"
-    assert response["user"]["rsp_intg"] != 0, "Response user.rsp_intg should not be zero"
-    assert response["user"]["data_intg"] != 0, "Response user.data_intg should not be zero"
+    assert response["user"]["rsp_intg"
+                            ] != 0, "Response user.rsp_intg should not be zero"
+    assert response["user"][
+        "data_intg"] != 0, "Response user.data_intg should not be zero"
 
     # Check spare response channel
     assert dut.io_spare_rsp_o.value == spare_rsp_val, "Spare response data mismatch"

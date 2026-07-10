@@ -18,17 +18,20 @@ from coralnpu_test_utils.sim_test_fixture import Fixture
 from bazel_tools.tools.python.runfiles import runfiles
 
 
-def log_matmul_metrics(dut, test_name: str, cycles: int, lhs_rows: int,
-                       rhs_cols: int, inner: int):
+def log_matmul_metrics(
+    dut, test_name: str, cycles: int, lhs_rows: int, rhs_cols: int, inner: int
+):
     total_macs = lhs_rows * rhs_cols * inner
     cycles_per_mac = cycles / total_macs
-    banner = (f"\n{'='*60}\n"
-              f" PERFORMANCE METRICS: {test_name}\n"
-              f"{'-'*60}\n"
-              f"  Total Cycles   : {cycles:,}\n"
-              f"  Total MACs     : {total_macs:,}\n"
-              f"  Cycles / MAC   : {cycles_per_mac:.2f}\n"
-              f"{'='*60}")
+    banner = (
+        f"\n{'='*60}\n"
+        f" PERFORMANCE METRICS: {test_name}\n"
+        f"{'-'*60}\n"
+        f"  Total Cycles   : {cycles:,}\n"
+        f"  Total MACs     : {total_macs:,}\n"
+        f"  Cycles / MAC   : {cycles_per_mac:.2f}\n"
+        f"{'='*60}"
+    )
     dut._log.info(banner)
 
 
@@ -47,7 +50,8 @@ async def float_matmul_16x48x16_test(dut):
     )
     await fixture.load_elf_and_lookup_symbols(
         elf_path,
-        ['lhs_input', 'rhs_input', 'result_output', 'csr_cycle_count'])
+        ['lhs_input', 'rhs_input', 'result_output', 'csr_cycle_count']
+    )
 
     # Generate deterministic test data using a fixed seed (ensures power profile consistency)
     rng = np.random.default_rng(seed=42)
@@ -61,16 +65,18 @@ async def float_matmul_16x48x16_test(dut):
     await fixture.run_to_halt(timeout_cycles=1000000)
 
     # Verify results
-    actual = (await
-              fixture.read('result_output', LHS_ROWS * RHS_COLS * 4)).view(
-                  dtype=np.float32).reshape([LHS_ROWS, RHS_COLS])
+    actual = (await fixture.read('result_output', LHS_ROWS * RHS_COLS *
+                                 4)).view(dtype=np.float32
+                                          ).reshape([LHS_ROWS, RHS_COLS])
     np.testing.assert_allclose(expected, actual, rtol=1e-4, atol=1e-4)
 
     # Log metrics for power/perf analysis
     csr_cycle_count = (await
                        fixture.read_word('csr_cycle_count')).view(np.uint32)[0]
-    log_matmul_metrics(dut, "float_matmul_16x48x16", csr_cycle_count, LHS_ROWS,
-                       RHS_COLS, INNER)
+    log_matmul_metrics(
+        dut, "float_matmul_16x48x16", csr_cycle_count, LHS_ROWS, RHS_COLS,
+        INNER
+    )
 
 
 @cocotb.test()
@@ -88,7 +94,8 @@ async def int_matmul_16x48x16_test(dut):
     )
     await fixture.load_elf_and_lookup_symbols(
         elf_path,
-        ['lhs_input', 'rhs_input', 'result_output', 'csr_cycle_count'])
+        ['lhs_input', 'rhs_input', 'result_output', 'csr_cycle_count']
+    )
 
     # Generate deterministic test data using a fixed seed (ensures power profile consistency)
     rng = np.random.default_rng(seed=42)
@@ -102,13 +109,14 @@ async def int_matmul_16x48x16_test(dut):
     await fixture.run_to_halt(timeout_cycles=1000000)
 
     # Verify results
-    actual = (await
-              fixture.read('result_output', LHS_ROWS * RHS_COLS * 4)).view(
-                  dtype=np.int32).reshape([LHS_ROWS, RHS_COLS])
+    actual = (await fixture.read('result_output', LHS_ROWS * RHS_COLS *
+                                 4)).view(dtype=np.int32
+                                          ).reshape([LHS_ROWS, RHS_COLS])
     assert ((expected == actual).all())
 
     # Log metrics for power/perf analysis
     csr_cycle_count = (await
                        fixture.read_word('csr_cycle_count')).view(np.uint32)[0]
-    log_matmul_metrics(dut, "int_matmul_16x48x16", csr_cycle_count, LHS_ROWS,
-                       RHS_COLS, INNER)
+    log_matmul_metrics(
+        dut, "int_matmul_16x48x16", csr_cycle_count, LHS_ROWS, RHS_COLS, INNER
+    )

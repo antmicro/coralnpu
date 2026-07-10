@@ -19,6 +19,7 @@ from coralnpu_test_utils.sim_test_fixture import Fixture
 
 
 class LogisticTester:
+
     def __init__(self, input_size):
         self.input_size = input_size
         r = runfiles.Create()
@@ -58,12 +59,14 @@ class LogisticTester:
                 input_data, (0, self.input_size - len(input_data)), "edge"
             )
         else:
-            input_data = input_data[: self.input_size]
+            input_data = input_data[:self.input_size]
 
         await self.fixture.write_word("input_zero_point", 0)
         await self.fixture.write_word("input_range_radius", 127)
         await self.fixture.write_word("input_multiplier", 1073741824)
-        await self.fixture.write("input_left_shift", np.array([0], dtype=np.int32))
+        await self.fixture.write(
+            "input_left_shift", np.array([0], dtype=np.int32)
+        )
         await self.fixture.write_word("input_size", self.input_size)
         await self.fixture.write("input_data", input_data)
 
@@ -85,9 +88,8 @@ class LogisticTester:
             "output_data", np.zeros([self.input_size], dtype=np.int8)
         )
         await self.fixture.run_to_halt(timeout_cycles=timeout_cycles)
-        outputs = (await self.fixture.read("output_data", self.input_size)).view(
-            np.int8
-        )
+        outputs = (await self.fixture.read("output_data",
+                                           self.input_size)).view(np.int8)
 
         data = await self.fixture.read(
             "ref_cycles" if func_ptr == "run_ref" else "opt_cycles", 8
@@ -98,7 +100,9 @@ class LogisticTester:
     async def test(self, timeout_cycles=1000000):
         ref_output, ref_cycles = await self.run("run_ref", timeout_cycles)
         print(f"ref_cycles={ref_cycles}", flush=True)
-        opt_output, opt_cycles = await self.run("run_optimized", timeout_cycles)
+        opt_output, opt_cycles = await self.run(
+            "run_optimized", timeout_cycles
+        )
         print(f"opt_cycles={opt_cycles}", flush=True)
         if opt_cycles > 0:
             print(f"speedup={float(ref_cycles) / opt_cycles:.2f}x", flush=True)

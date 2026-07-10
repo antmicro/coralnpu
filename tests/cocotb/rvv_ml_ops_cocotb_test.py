@@ -13,24 +13,28 @@ import cocotb
 import numpy as np
 import argparse
 import sys
+
 sys.set_int_max_str_digits(100000)
 
 from coralnpu_test_utils.sim_test_fixture import Fixture
 from bazel_tools.tools.python.runfiles import runfiles
 
 
-def log_matmul_metrics(dut, test_name: str, cycles: int, lhs_rows: int,
-                       rhs_cols: int, inner: int):
+def log_matmul_metrics(
+    dut, test_name: str, cycles: int, lhs_rows: int, rhs_cols: int, inner: int
+):
     """Calculate and log MAC metrics for a matrix multiplication."""
     total_macs = lhs_rows * rhs_cols * inner
     cycles_per_mac = cycles / total_macs
-    banner = (f"\n{'='*60}\n"
-              f" PERFORMANCE METRICS: {test_name}\n"
-              f"{'-'*60}\n"
-              f"  Total Cycles   : {cycles:,}\n"
-              f"  Total MACs     : {total_macs:,}\n"
-              f"  Cycles / MAC   : {cycles_per_mac:.2f}\n"
-              f"{'='*60}")
+    banner = (
+        f"\n{'='*60}\n"
+        f" PERFORMANCE METRICS: {test_name}\n"
+        f"{'-'*60}\n"
+        f"  Total Cycles   : {cycles:,}\n"
+        f"  Total MACs     : {total_macs:,}\n"
+        f"  Cycles / MAC   : {cycles_per_mac:.2f}\n"
+        f"{'='*60}"
+    )
     dut._log.info(banner)
 
 
@@ -45,12 +49,15 @@ async def core_mini_rvv_matmul_c_test(dut):
         r.Rlocation('coralnpu_hw/tests/cocotb/rvv/ml_ops/' + elf_file), [
             'lhs_input', 'rhs_input', 'result_output', 'lhs_rows', 'rhs_cols',
             'inner', 'csr_cycle_count'
-        ])
+        ]
+    )
 
     shapes = [(16, 16, 48)]
 
     for LHS_ROWS, RHS_COLS, INNER in shapes:
-        dut._log.info(f"Running shape: {LHS_ROWS}x{INNER} x {INNER}x{RHS_COLS}")
+        dut._log.info(
+            f"Running shape: {LHS_ROWS}x{INNER} x {INNER}x{RHS_COLS}"
+        )
         await fixture.core_mini_axi.reset()
         await fixture.write_word('lhs_rows', LHS_ROWS)
         await fixture.write_word('rhs_cols', RHS_COLS)
@@ -59,26 +66,29 @@ async def core_mini_rvv_matmul_c_test(dut):
         np_type = np.int8
         min_value = np.iinfo(np_type).min
         max_value = np.iinfo(np_type).max + 1  # One above.
-        lhs_data = np.random.randint(min_value,
-                                     max_value, [LHS_ROWS, INNER],
-                                     dtype=np_type)
-        rhs_data = np.random.randint(min_value,
-                                     max_value, [INNER, RHS_COLS],
-                                     dtype=np_type)
-        result_data = np.matmul(lhs_data.astype(np.int32),
-                                rhs_data.astype(np.int32))
+        lhs_data = np.random.randint(
+            min_value, max_value, [LHS_ROWS, INNER], dtype=np_type
+        )
+        rhs_data = np.random.randint(
+            min_value, max_value, [INNER, RHS_COLS], dtype=np_type
+        )
+        result_data = np.matmul(
+            lhs_data.astype(np.int32), rhs_data.astype(np.int32)
+        )
 
         await fixture.write('lhs_input', lhs_data.flatten())
         await fixture.write('rhs_input', rhs_data.transpose().flatten())
         await fixture.run_to_halt(timeout_cycles=1000000)
         csr_cycle_count = (await fixture.read_word('csr_cycle_count')).view(
-            np.uint32)[0]
+            np.uint32
+        )[0]
         log_matmul_metrics(
             dut, f"core_mini_rvv_matmul_c_test_{LHS_ROWS}x{RHS_COLS}x{INNER}",
-            csr_cycle_count, LHS_ROWS, RHS_COLS, INNER)
-        output_matmul_result = (await fixture.read(
-            'result_output', LHS_ROWS * RHS_COLS *
-            4)).view(dtype=np.int32).reshape([LHS_ROWS, RHS_COLS])
+            csr_cycle_count, LHS_ROWS, RHS_COLS, INNER
+        )
+        output_matmul_result = (
+            await fixture.read('result_output', LHS_ROWS * RHS_COLS * 4)
+        ).view(dtype=np.int32).reshape([LHS_ROWS, RHS_COLS])
 
         assert ((result_data == output_matmul_result).all())
 
@@ -95,12 +105,15 @@ async def core_mini_rvv_matmul_asm_test(dut):
         r.Rlocation('coralnpu_hw/tests/cocotb/rvv/ml_ops/' + elf_file), [
             'lhs_input', 'rhs_input', 'result_output', 'lhs_rows', 'rhs_cols',
             'inner', 'csr_cycle_count'
-        ])
+        ]
+    )
 
     shapes = [(16, 16, 48)]
 
     for LHS_ROWS, RHS_COLS, INNER in shapes:
-        dut._log.info(f"Running shape: {LHS_ROWS}x{INNER} x {INNER}x{RHS_COLS}")
+        dut._log.info(
+            f"Running shape: {LHS_ROWS}x{INNER} x {INNER}x{RHS_COLS}"
+        )
         await fixture.core_mini_axi.reset()
         await fixture.write_word('lhs_rows', LHS_ROWS)
         await fixture.write_word('rhs_cols', RHS_COLS)
@@ -109,26 +122,30 @@ async def core_mini_rvv_matmul_asm_test(dut):
         np_type = np.int8
         min_value = np.iinfo(np_type).min
         max_value = np.iinfo(np_type).max + 1  # One above.
-        lhs_data = np.random.randint(min_value,
-                                     max_value, [LHS_ROWS, INNER],
-                                     dtype=np_type)
-        rhs_data = np.random.randint(min_value,
-                                     max_value, [INNER, RHS_COLS],
-                                     dtype=np_type)
-        result_data = np.matmul(lhs_data.astype(np.int32),
-                                rhs_data.astype(np.int32))
+        lhs_data = np.random.randint(
+            min_value, max_value, [LHS_ROWS, INNER], dtype=np_type
+        )
+        rhs_data = np.random.randint(
+            min_value, max_value, [INNER, RHS_COLS], dtype=np_type
+        )
+        result_data = np.matmul(
+            lhs_data.astype(np.int32), rhs_data.astype(np.int32)
+        )
 
         await fixture.write('lhs_input', lhs_data.flatten())
         await fixture.write('rhs_input', rhs_data.transpose().flatten())
         await fixture.run_to_halt(timeout_cycles=1000000)
         csr_cycle_count = (await fixture.read_word('csr_cycle_count')).view(
-            np.uint32)[0]
+            np.uint32
+        )[0]
         log_matmul_metrics(
-            dut, f"core_mini_rvv_matmul_asm_test_{LHS_ROWS}x{RHS_COLS}x{INNER}",
-            csr_cycle_count, LHS_ROWS, RHS_COLS, INNER)
-        output_matmul_result = (await fixture.read(
-            'result_output', LHS_ROWS * RHS_COLS *
-            4)).view(dtype=np.int32).reshape([LHS_ROWS, RHS_COLS])
+            dut,
+            f"core_mini_rvv_matmul_asm_test_{LHS_ROWS}x{RHS_COLS}x{INNER}",
+            csr_cycle_count, LHS_ROWS, RHS_COLS, INNER
+        )
+        output_matmul_result = (
+            await fixture.read('result_output', LHS_ROWS * RHS_COLS * 4)
+        ).view(dtype=np.int32).reshape([LHS_ROWS, RHS_COLS])
 
         assert ((result_data == output_matmul_result).all())
 
@@ -145,12 +162,15 @@ async def core_mini_rvv_float_matmul_c_test(dut):
         r.Rlocation('coralnpu_hw/tests/cocotb/rvv/ml_ops/' + elf_file), [
             'lhs_input', 'rhs_input', 'result_output', 'lhs_rows', 'rhs_cols',
             'inner', 'csr_cycle_count'
-        ])
+        ]
+    )
 
     shapes = [(16, 16, 48)]
 
     for LHS_ROWS, RHS_COLS, INNER in shapes:
-        dut._log.info(f"Running shape: {LHS_ROWS}x{INNER} x {INNER}x{RHS_COLS}")
+        dut._log.info(
+            f"Running shape: {LHS_ROWS}x{INNER} x {INNER}x{RHS_COLS}"
+        )
         await fixture.core_mini_axi.reset()
         await fixture.write_word('lhs_rows', LHS_ROWS)
         await fixture.write_word('rhs_cols', RHS_COLS)
@@ -167,7 +187,8 @@ async def core_mini_rvv_float_matmul_c_test(dut):
         await fixture.write('rhs_input', rhs_data.transpose().flatten())
         await fixture.run_to_halt(timeout_cycles=1000000)
         csr_cycle_count = (await fixture.read_word('csr_cycle_count')).view(
-            np.uint32)[0]
+            np.uint32
+        )[0]
         log_matmul_metrics(
             dut,
             f"core_mini_rvv_float_matmul_c_test_{LHS_ROWS}x{RHS_COLS}x{INNER}",
@@ -176,14 +197,13 @@ async def core_mini_rvv_float_matmul_c_test(dut):
             RHS_COLS,
             INNER,
         )
-        output_matmul_result = (await fixture.read(
-            'result_output', LHS_ROWS * RHS_COLS *
-            4)).view(dtype=np_type).reshape([LHS_ROWS, RHS_COLS])
+        output_matmul_result = (
+            await fixture.read('result_output', LHS_ROWS * RHS_COLS * 4)
+        ).view(dtype=np_type).reshape([LHS_ROWS, RHS_COLS])
 
-        np.testing.assert_allclose(result_data,
-                                   output_matmul_result,
-                                   rtol=1e-4,
-                                   atol=1e-4)
+        np.testing.assert_allclose(
+            result_data, output_matmul_result, rtol=1e-4, atol=1e-4
+        )
 
 
 @cocotb.test()
@@ -198,12 +218,15 @@ async def core_mini_rvv_float_matmul_asm_test(dut):
         r.Rlocation('coralnpu_hw/tests/cocotb/rvv/ml_ops/' + elf_file), [
             'lhs_input', 'rhs_input', 'result_output', 'lhs_rows', 'rhs_cols',
             'inner', 'csr_cycle_count'
-        ])
+        ]
+    )
 
     shapes = [(16, 16, 48)]
 
     for LHS_ROWS, RHS_COLS, INNER in shapes:
-        dut._log.info(f"Running shape: {LHS_ROWS}x{INNER} x {INNER}x{RHS_COLS}")
+        dut._log.info(
+            f"Running shape: {LHS_ROWS}x{INNER} x {INNER}x{RHS_COLS}"
+        )
         await fixture.core_mini_axi.reset()
         await fixture.write_word('lhs_rows', LHS_ROWS)
         await fixture.write_word('rhs_cols', RHS_COLS)
@@ -220,7 +243,8 @@ async def core_mini_rvv_float_matmul_asm_test(dut):
         await fixture.write('rhs_input', rhs_data.transpose().flatten())
         await fixture.run_to_halt(timeout_cycles=1000000)
         csr_cycle_count = (await fixture.read_word('csr_cycle_count')).view(
-            np.uint32)[0]
+            np.uint32
+        )[0]
         log_matmul_metrics(
             dut,
             f"core_mini_rvv_float_matmul_asm_test_{LHS_ROWS}x{RHS_COLS}x{INNER}",
@@ -229,14 +253,13 @@ async def core_mini_rvv_float_matmul_asm_test(dut):
             RHS_COLS,
             INNER,
         )
-        output_matmul_result = (await fixture.read(
-            'result_output', LHS_ROWS * RHS_COLS *
-            4)).view(dtype=np_type).reshape([LHS_ROWS, RHS_COLS])
+        output_matmul_result = (
+            await fixture.read('result_output', LHS_ROWS * RHS_COLS * 4)
+        ).view(dtype=np_type).reshape([LHS_ROWS, RHS_COLS])
 
-        np.testing.assert_allclose(result_data,
-                                   output_matmul_result,
-                                   rtol=1e-4,
-                                   atol=1e-4)
+        np.testing.assert_allclose(
+            result_data, output_matmul_result, rtol=1e-4, atol=1e-4
+        )
 
 
 @cocotb.test()
@@ -251,12 +274,15 @@ async def core_mini_rvv_float_matmul_optimized_c_test(dut):
         r.Rlocation('coralnpu_hw/tests/cocotb/rvv/ml_ops/' + elf_file), [
             'lhs_input', 'rhs_input', 'result_output', 'lhs_rows', 'rhs_cols',
             'inner', 'csr_cycle_count'
-        ])
+        ]
+    )
 
     shapes = [(16, 16, 48)]
 
     for LHS_ROWS, RHS_COLS, INNER in shapes:
-        dut._log.info(f"Running shape: {LHS_ROWS}x{INNER} x {INNER}x{RHS_COLS}")
+        dut._log.info(
+            f"Running shape: {LHS_ROWS}x{INNER} x {INNER}x{RHS_COLS}"
+        )
         await fixture.core_mini_axi.reset()
         await fixture.write_word('lhs_rows', LHS_ROWS)
         await fixture.write_word('rhs_cols', RHS_COLS)
@@ -273,7 +299,8 @@ async def core_mini_rvv_float_matmul_optimized_c_test(dut):
         await fixture.write('rhs_input', rhs_data.transpose().flatten())
         await fixture.run_to_halt(timeout_cycles=1000000)
         csr_cycle_count = (await fixture.read_word('csr_cycle_count')).view(
-            np.uint32)[0]
+            np.uint32
+        )[0]
         log_matmul_metrics(
             dut,
             f"core_mini_rvv_float_matmul_optimized_c_test_{LHS_ROWS}x{RHS_COLS}x{INNER}",
@@ -282,14 +309,15 @@ async def core_mini_rvv_float_matmul_optimized_c_test(dut):
             RHS_COLS,
             INNER,
         )
-        output_matmul_result = (await fixture.read(
-            'result_output', LHS_ROWS * RHS_COLS *
-            4)).view(dtype=np_type).reshape([LHS_ROWS, RHS_COLS])
+        output_matmul_result = (
+            await fixture.read('result_output', LHS_ROWS * RHS_COLS * 4)
+        ).view(dtype=np_type).reshape([LHS_ROWS, RHS_COLS])
 
-        np.testing.assert_allclose(result_data,
-                                   output_matmul_result,
-                                   rtol=1e-4,
-                                   atol=1e-4)
+        np.testing.assert_allclose(
+            result_data, output_matmul_result, rtol=1e-4, atol=1e-4
+        )
+
+
 def golden_flash_attention(q, k, v):
     """NumPy Golden Reference for FlashAttention."""
     # S = Q * K^T
@@ -301,6 +329,7 @@ def golden_flash_attention(q, k, v):
     p /= np.sum(p, axis=-1, keepdims=True)
     # O = P * V
     return np.matmul(p, v)
+
 
 @cocotb.test()
 async def core_mini_rvv_flashattention_test(dut):
@@ -317,8 +346,7 @@ async def core_mini_rvv_flashattention_test(dut):
     elf_path = r.Rlocation(f"coralnpu_hw/tests/cocotb/rvv/ml_ops/{elf_name}")
 
     await fixture.load_elf_and_lookup_symbols(
-        elf_path,
-        ["q_buf", "k_buf", "v_buf", "o_buf", "csr_cycle_count"]
+        elf_path, ["q_buf", "k_buf", "v_buf", "o_buf", "csr_cycle_count"]
     )
     # 2. DATA GENERATION: Define dimensions
     seq_len_val = 32
@@ -341,7 +369,8 @@ async def core_mini_rvv_flashattention_test(dut):
     # 4. UNPAUSE AND EXECUTE
     await fixture.run_to_halt(timeout_cycles=2000000)
 
-    csr_cycle_count = (await fixture.read_word('csr_cycle_count')).view(np.uint32)[0]
+    csr_cycle_count = (await
+                       fixture.read_word('csr_cycle_count')).view(np.uint32)[0]
 
     log_matmul_metrics(
         dut,
@@ -353,7 +382,7 @@ async def core_mini_rvv_flashattention_test(dut):
     )
 
     # 5. READBACK & VERIFICATION
-    num_bytes = seq_len_val * d_val * 4 # 4 bytes per FP32
+    num_bytes = seq_len_val * d_val * 4  # 4 bytes per FP32
     actual_packed = await fixture.read("o_buf", num_bytes)
     actual_output = actual_packed.view(np.float32).reshape(seq_len_val, d_val)
 

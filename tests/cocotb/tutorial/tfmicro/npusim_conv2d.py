@@ -16,7 +16,9 @@ from bazel_tools.tools.python.runfiles import runfiles
 from coralnpu_v2_sim_utils import CoralNPUV2Simulator
 import numpy as np
 
+
 class MpactConv2DTest:
+
     def __init__(self, in_d, out_d, stride=1, out_h=4, out_w=4):
         self.stride = stride
         in_h = out_h * stride
@@ -29,13 +31,13 @@ class MpactConv2DTest:
 
         r = runfiles.Create()
         self.elf_file = r.Rlocation(
-            'coralnpu_hw/tests/cocotb/tutorial/tfmicro/conv2d_test.elf')
+            'coralnpu_hw/tests/cocotb/tutorial/tfmicro/conv2d_test.elf'
+        )
 
     def load_and_populate_input(self):
         self.npu_sim = CoralNPUV2Simulator(highmem_ld=True)
         self.entry_point, self.symbol_map = self.npu_sim.get_elf_entry_and_symbol(
-            self.elf_file,
-            [
+            self.elf_file, [
                 'impl',
                 'run_ref',
                 'run_opt',
@@ -54,36 +56,58 @@ class MpactConv2DTest:
         self.npu_sim.load_program(self.elf_file)
         rng = np.random.default_rng()
         filter_data = rng.integers(
-            -128, 128, self.f_shape, dtype=np.int8).flatten()
+            -128, 128, self.f_shape, dtype=np.int8
+        ).flatten()
         bias_data = rng.integers(
-            -100000, 100000, self.out_shape[3], dtype=np.int32)
+            -100000, 100000, self.out_shape[3], dtype=np.int32
+        )
         input_data = rng.integers(
-            -128, 128, self.in_shape, dtype=np.int8).flatten()
+            -128, 128, self.in_shape, dtype=np.int8
+        ).flatten()
 
-        self.npu_sim.write_word(self.symbol_map['stride'], np.uint32(self.stride))
-        self.npu_sim.write_memory(self.symbol_map['filter_shape'], self.f_shape)
+        self.npu_sim.write_word(
+            self.symbol_map['stride'], np.uint32(self.stride)
+        )
+        self.npu_sim.write_memory(
+            self.symbol_map['filter_shape'], self.f_shape
+        )
         self.npu_sim.write_memory(self.symbol_map['filter_data'], filter_data)
 
-        self.npu_sim.write_memory(self.symbol_map['bias_shape'], self.bias_shape)
+        self.npu_sim.write_memory(
+            self.symbol_map['bias_shape'], self.bias_shape
+        )
         self.npu_sim.write_memory(self.symbol_map['bias_data'], bias_data)
-        self.npu_sim.write_memory(self.symbol_map['input_shape'], self.in_shape)
+        self.npu_sim.write_memory(
+            self.symbol_map['input_shape'], self.in_shape
+        )
         self.npu_sim.write_memory(self.symbol_map['input_data'], input_data)
 
         # Verify input_data integrity
-        read_back_input = self.npu_sim.read_memory(self.symbol_map['input_data'], len(input_data)).view(np.int8)
+        read_back_input = self.npu_sim.read_memory(
+            self.symbol_map['input_data'], len(input_data)
+        ).view(np.int8)
         if not (read_back_input == input_data).all():
-             print("Input data mismatch during load!")
-             raise AssertionError("Input data corrupted during write_memory")
-        self.npu_sim.write_memory(self.symbol_map['output_shape'], self.out_shape)
+            print("Input data mismatch during load!")
+            raise AssertionError("Input data corrupted during write_memory")
+        self.npu_sim.write_memory(
+            self.symbol_map['output_shape'], self.out_shape
+        )
 
     def run(self, fun_ptr):
         self.npu_sim.write_register('pc', self.entry_point)
-        self.npu_sim.write_ptr(self.symbol_map['impl'], self.symbol_map[fun_ptr])
-        self.npu_sim.write_memory(self.symbol_map['output_data'], np.zeros([self.out_size], dtype=np.int8))
+        self.npu_sim.write_ptr(
+            self.symbol_map['impl'], self.symbol_map[fun_ptr]
+        )
+        self.npu_sim.write_memory(
+            self.symbol_map['output_data'],
+            np.zeros([self.out_size], dtype=np.int8)
+        )
         self.npu_sim.run()
         self.npu_sim.wait()
         cycles = self.npu_sim.get_cycle_count()
-        outputs = self.npu_sim.read_memory(self.symbol_map['output_data'], self.out_size).view(np.int8)
+        outputs = self.npu_sim.read_memory(
+            self.symbol_map['output_data'], self.out_size
+        ).view(np.int8)
         return cycles, outputs
 
     def test(self):
@@ -121,6 +145,7 @@ def run_tests():
     t = MpactConv2DTest(in_d=21, out_d=16, stride=1, out_h=2, out_w=2)
     t.load_and_populate_input()
     t.test()
+
 
 if __name__ == "__main__":
     run_tests()

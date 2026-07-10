@@ -128,7 +128,8 @@ async def zfbfmin_test(dut):
         r.Rlocation('coralnpu_hw/tests/cocotb/' + elf_file), [
             'fcvt_s_bf16_cases', 'fcvt_bf16_s_cases', 'num_fcvt_s_bf16_cases',
             'num_fcvt_bf16_s_cases'
-        ])
+        ]
+    )
 
     symbols = fixture.symbols
 
@@ -148,12 +149,15 @@ async def zfbfmin_test(dut):
 
     for i, val in enumerate(s_bf16_inputs):
         await fixture.core_mini_axi.write_word(
-            symbols['fcvt_s_bf16_cases'] + i * 16, 0xFFFF0000 | val)
+            symbols['fcvt_s_bf16_cases'] + i * 16, 0xFFFF0000 | val
+        )
         await fixture.core_mini_axi.write_word(
-            symbols['fcvt_s_bf16_cases'] + i * 16 + 4, RNE)
+            symbols['fcvt_s_bf16_cases'] + i * 16 + 4, RNE
+        )
 
-    await fixture.core_mini_axi.write_word(symbols['num_fcvt_s_bf16_cases'],
-                                           len(s_bf16_inputs))
+    await fixture.core_mini_axi.write_word(
+        symbols['num_fcvt_s_bf16_cases'], len(s_bf16_inputs)
+    )
 
     # Test cases for fcvt.bf16.s (FP32 to BF16)
     bf16_s_inputs = [
@@ -181,12 +185,15 @@ async def zfbfmin_test(dut):
     for i, (val, rm) in enumerate(bf16_s_inputs):
         bits = fp32_to_bits(val)
         await fixture.core_mini_axi.write_word(
-            symbols['fcvt_bf16_s_cases'] + i * 16, bits)
+            symbols['fcvt_bf16_s_cases'] + i * 16, bits
+        )
         await fixture.core_mini_axi.write_word(
-            symbols['fcvt_bf16_s_cases'] + i * 16 + 4, rm)
+            symbols['fcvt_bf16_s_cases'] + i * 16 + 4, rm
+        )
 
-    await fixture.core_mini_axi.write_word(symbols['num_fcvt_bf16_s_cases'],
-                                           len(bf16_s_inputs))
+    await fixture.core_mini_axi.write_word(
+        symbols['num_fcvt_bf16_s_cases'], len(bf16_s_inputs)
+    )
 
     # Run the core
     cycles = await fixture.run_to_halt(timeout_cycles=1000000)
@@ -204,10 +211,10 @@ async def zfbfmin_test(dut):
 
         expected_bits, expected_flags = bf16_to_fp32_bits_with_flags(val)
 
-        is_expected_nan = (expected_bits & 0x7f800000) == 0x7f800000 and (
-            expected_bits & 0x7fffff) != 0
-        is_actual_nan = (actual_bits & 0x7f800000) == 0x7f800000 and (
-            actual_bits & 0x7fffff) != 0
+        is_expected_nan = (expected_bits & 0x7f800000
+                           ) == 0x7f800000 and (expected_bits & 0x7fffff) != 0
+        is_actual_nan = (actual_bits & 0x7f800000
+                         ) == 0x7f800000 and (actual_bits & 0x7fffff) != 0
 
         if is_expected_nan:
             assert is_actual_nan, f"Case {i}: Input {hex(val)}, Expected NaN, got {hex(actual_bits)}"
@@ -228,12 +235,15 @@ async def zfbfmin_test(dut):
 
         actual_bf16 = actual_bits & 0xFFFF
         expected_bf16, expected_flags = fp32_to_bf16_bits_with_flags(
-            fp32_to_bits(val), rm)
+            fp32_to_bits(val), rm
+        )
 
-        is_expected_nan = (expected_bf16 & 0x7f80) == 0x7f80 and (expected_bf16
-                                                                  & 0x7f) != 0
-        is_actual_nan = (actual_bf16 & 0x7f80) == 0x7f80 and (actual_bf16
-                                                              & 0x7f) != 0
+        is_expected_nan = (expected_bf16
+                           & 0x7f80) == 0x7f80 and (expected_bf16
+                                                    & 0x7f) != 0
+        is_actual_nan = (actual_bf16
+                         & 0x7f80) == 0x7f80 and (actual_bf16
+                                                  & 0x7f) != 0
 
         if is_expected_nan:
             assert is_actual_nan, f"Case {i}: Input {val} (RM {rm}), Expected NaN, got {hex(actual_bf16)}"

@@ -193,10 +193,16 @@ def narrow(lmul, factor):
             "M8": "M4",
         }.get(lmul, "INVALID")
     if factor == 4:
-        return {"M1": "MF4", "M2": "MF2", "M4": "M1", "M8": "M2"}.get(lmul, "INVALID")
+        return {
+            "M1": "MF4",
+            "M2": "MF2",
+            "M4": "M1",
+            "M8": "M2"
+        }.get(lmul, "INVALID")
     if factor == 8:
         return {"M2": "MF4", "M4": "MF2", "M8": "M1"}.get(lmul, "INVALID")
     return "INVALID"
+
 
 def all_signed_bitcounts_lmuls():
     for bit_count, lmul, signed in itertools.product(BITCOUNTS, LMULS, SIGNED):
@@ -204,8 +210,10 @@ def all_signed_bitcounts_lmuls():
             continue
         yield signed, (bit_count, lmul)
 
+
 def all_float_bitcounts_lmuls():
-    for bit_count, lmul in itertools.product(FLOAT_BITCOUNTS, ["M1", "M2", "M4", "M8"]):
+    for bit_count, lmul in itertools.product(FLOAT_BITCOUNTS,
+                                             ["M1", "M2", "M4", "M8"]):
         yield bit_count, lmul
 
 
@@ -219,6 +227,7 @@ def get_mask_n(bit_count, lmul):
         "M8": 8.0,
     }[lmul]
     return int(bit_count / lmul_val)
+
 
 SAME_TYPE_BINARY_OPS = [
     "VADD",
@@ -286,6 +295,7 @@ MIXED_SIGN_SAME_WIDTH_TYPE_BINARY_OPS = [
     "VSSRL",
 ]
 
+
 def same_type_binary_op_trait(bit_count, signed, lmul):
     unsigned = "" if signed else "u"
     ui = "i" if signed else "u"
@@ -347,6 +357,7 @@ template<> struct SameTypeBinaryOpTraits<{scalar_type}_t, Lmul::{lmul}> {{
     trait += "\n};"
     return trait
 
+
 def same_type_float_binary_op_trait(bit_count, lmul):
     base_type = f"f{bit_count}{lmul.lower()}"
     return f"""
@@ -389,6 +400,7 @@ template<> struct SameTypeBinaryOpTraits<float, Lmul::{lmul}> {{
   static constexpr auto vfrdiv_vf = __riscv_vfrdiv_vf_{base_type};
   static constexpr auto vfsqrt_v = __riscv_vfsqrt_v_{base_type};
 }};"""
+
 
 def mixed_sign_same_width_type_binary_op_trait(bit_count, signed, lmul):
     unsigned = "" if signed else "u"
@@ -578,8 +590,10 @@ def float_widen_narrow_convert_trait(signed, lmul):
     res += "};"
     return res
 
+
 def camel_case(x):
     return x[0] + x[1:].lower()
+
 
 def main():
     header = [START]
@@ -589,11 +603,15 @@ def main():
         unsigned = "" if signed else "u"
         scalar_type = f"{unsigned}int{bit_count}"
         vector_type = f"v{scalar_type}{lmul.lower()}_t"
-        header.append(f"template<> struct RvvTypeTraits<{scalar_type}_t, Lmul::{lmul}> {{ using type = {vector_type}; }};")
+        header.append(
+            f"template<> struct RvvTypeTraits<{scalar_type}_t, Lmul::{lmul}> {{ using type = {vector_type}; }};"
+        )
     for bit_count, lmul in all_float_bitcounts_lmuls():
         scalar_type = "float"
         vector_type = f"vfloat{bit_count}{lmul.lower()}_t"
-        header.append(f"template<> struct RvvTypeTraits<{scalar_type}, Lmul::{lmul}> {{ using type = {vector_type}; }};")
+        header.append(
+            f"template<> struct RvvTypeTraits<{scalar_type}, Lmul::{lmul}> {{ using type = {vector_type}; }};"
+        )
 
     # Generate mask types
     for signed, (bit_count, lmul) in all_signed_bitcounts_lmuls():
@@ -617,12 +635,18 @@ def main():
         ui = "i" if signed else "u"
         scalar_type = f"{unsigned}int{bit_count}"
         load_fn = f"__riscv_vle{bit_count}_v_{ui}{bit_count}{lmul.lower()}"
-        header.append(f"template<> struct VleTraits<{scalar_type}_t, Lmul::{lmul}> {{ static constexpr auto fn = {load_fn}; }};")
+        header.append(
+            f"template<> struct VleTraits<{scalar_type}_t, Lmul::{lmul}> {{ static constexpr auto fn = {load_fn}; }};"
+        )
     for bit_count, lmul in all_float_bitcounts_lmuls():
         scalar_type = "float"
         load_fn = f"__riscv_vle{bit_count}_v_f{bit_count}{lmul.lower()}"
-        header.append(f"template<> struct VleTraits<{scalar_type}, Lmul::{lmul}> {{ static constexpr auto fn = {load_fn}; }};")
-    header.append("template<typename T, Lmul lmul> RvvType<T, lmul> Vle(const T* ptr, size_t vl){ return VleTraits<T, lmul>::fn(ptr, vl); }\n")
+        header.append(
+            f"template<> struct VleTraits<{scalar_type}, Lmul::{lmul}> {{ static constexpr auto fn = {load_fn}; }};"
+        )
+    header.append(
+        "template<typename T, Lmul lmul> RvvType<T, lmul> Vle(const T* ptr, size_t vl){ return VleTraits<T, lmul>::fn(ptr, vl); }\n"
+    )
 
     header.append("template<typename T, Lmul lmul> struct VseTraits {};")
     for signed, (bit_count, lmul) in all_signed_bitcounts_lmuls():
@@ -630,12 +654,18 @@ def main():
         ui = "i" if signed else "u"
         scalar_type = f"{unsigned}int{bit_count}"
         store_fn = f"__riscv_vse{bit_count}_v_{ui}{bit_count}{lmul.lower()}"
-        header.append(f"template<> struct VseTraits<{scalar_type}_t, Lmul::{lmul}> {{ static constexpr auto fn = {store_fn}; }};")
+        header.append(
+            f"template<> struct VseTraits<{scalar_type}_t, Lmul::{lmul}> {{ static constexpr auto fn = {store_fn}; }};"
+        )
     for bit_count, lmul in all_float_bitcounts_lmuls():
         scalar_type = "float"
         store_fn = f"__riscv_vse{bit_count}_v_f{bit_count}{lmul.lower()}"
-        header.append(f"template<> struct VseTraits<{scalar_type}, Lmul::{lmul}> {{ static constexpr auto fn = {store_fn}; }};")
-    header.append("template<typename T, Lmul lmul> void Vse(T* ptr, RvvType<T, lmul> v, size_t vl) { VseTraits<T, lmul>::fn(ptr, v, vl); }\n")
+        header.append(
+            f"template<> struct VseTraits<{scalar_type}, Lmul::{lmul}> {{ static constexpr auto fn = {store_fn}; }};"
+        )
+    header.append(
+        "template<typename T, Lmul lmul> void Vse(T* ptr, RvvType<T, lmul> v, size_t vl) { VseTraits<T, lmul>::fn(ptr, v, vl); }\n"
+    )
 
     # Generate vbool loads/stores
     header.append("template<typename T, Lmul lmul> struct VlmTraits {};")
@@ -673,7 +703,9 @@ def main():
     )
 
     # Binary Op Traits
-    header.append("template<typename T, Lmul lmul> struct SameTypeBinaryOpTraits {};")
+    header.append(
+        "template<typename T, Lmul lmul> struct SameTypeBinaryOpTraits {};"
+    )
     for signed, (bit_count, lmul) in all_signed_bitcounts_lmuls():
         header.append(same_type_binary_op_trait(bit_count, signed, lmul))
     for bit_count, lmul in all_float_bitcounts_lmuls():
@@ -685,17 +717,23 @@ def main():
     )
     for signed, (bit_count, lmul) in all_signed_bitcounts_lmuls():
         header.append(
-            mixed_sign_same_width_type_binary_op_trait(bit_count, signed, lmul)
+            mixed_sign_same_width_type_binary_op_trait(
+                bit_count, signed, lmul
+            )
         )
 
     # Widening Binary Op Traits
-    header.append("template<typename T, Lmul lmul> struct WideningBinaryOpTraits {};")
+    header.append(
+        "template<typename T, Lmul lmul> struct WideningBinaryOpTraits {};"
+    )
     for signed, (bit_count, lmul) in all_signed_bitcounts_lmuls():
         if bit_count < 32 and widen(lmul) != "INVALID":
             header.append(widening_binary_op_trait(bit_count, signed, lmul))
 
     # Widen Wide Binary Op Traits
-    header.append("template<typename T, Lmul lmul> struct WidenWideBinaryOpTraits {};")
+    header.append(
+        "template<typename T, Lmul lmul> struct WidenWideBinaryOpTraits {};"
+    )
     for signed, (bit_count, lmul) in all_signed_bitcounts_lmuls():
         if bit_count < 32 and widen(lmul) != "INVALID":
             header.append(widen_wide_binary_op_trait(bit_count, signed, lmul))
@@ -713,22 +751,30 @@ def main():
         header.append(carry_op_trait(bit_count, signed, lmul))
 
     # Comparison Op Traits
-    header.append("template<typename T, Lmul lmul> struct ComparisonOpTraits {};")
+    header.append(
+        "template<typename T, Lmul lmul> struct ComparisonOpTraits {};"
+    )
     for signed, (bit_count, lmul) in all_signed_bitcounts_lmuls():
         header.append(comparison_op_trait(bit_count, signed, lmul))
 
     # Float Comparison Op Traits
-    header.append("template<typename T, Lmul lmul> struct FloatComparisonOpTraits {};")
+    header.append(
+        "template<typename T, Lmul lmul> struct FloatComparisonOpTraits {};"
+    )
     for bit_count, lmul in all_float_bitcounts_lmuls():
         header.append(float_comparison_op_trait(bit_count, lmul))
 
     # Float Misc Op Traits
-    header.append("template<typename T, Lmul lmul> struct FloatMiscOpTraits {};")
+    header.append(
+        "template<typename T, Lmul lmul> struct FloatMiscOpTraits {};"
+    )
     for bit_count, lmul in all_float_bitcounts_lmuls():
         header.append(float_misc_op_trait(bit_count, lmul))
 
     # Float Convert Op Traits
-    header.append("template<typename T, Lmul lmul> struct FloatConvertOpTraits {};")
+    header.append(
+        "template<typename T, Lmul lmul> struct FloatConvertOpTraits {};"
+    )
     for bit_count, lmul in all_float_bitcounts_lmuls():
         header.append(float_convert_op_trait(bit_count, lmul))
 
@@ -748,7 +794,8 @@ def main():
 
         if binary_op not in ["VRSUB", "VFRSUB", "VFRDIV", "VFSQRT"]:
             if binary_op == "VSMUL":
-                header.append(f"""
+                header.append(
+                    f"""
 template<typename T, Lmul lmul {vxrm_template}> RvvType<T, lmul>
 {camel_case(binary_op)}(RvvType<T, lmul> vs1, RvvType<T, lmul> vs2, size_t vl) {{
   if constexpr (std::is_signed_v<T>) {{
@@ -756,17 +803,21 @@ template<typename T, Lmul lmul {vxrm_template}> RvvType<T, lmul>
   }} else {{
     return vs1; // Should not be called
   }}
-}}""")
+}}"""
+                )
             else:
-                header.append(f"""
+                header.append(
+                    f"""
 template<typename T, Lmul lmul {vxrm_template}> RvvType<T, lmul>
 {camel_case(binary_op)}(RvvType<T, lmul> vs1, RvvType<T, lmul> vs2, size_t vl) {{
   return SameTypeBinaryOpTraits<T, lmul>::{binary_op.lower()}_vv(vs1, vs2 {vxrm_call}, vl);
-}}""")
+}}"""
+                )
 
         if binary_op != "VFSQRT":
             if binary_op == "VSMUL":
-                header.append(f"""
+                header.append(
+                    f"""
 template<typename T, Lmul lmul {vxrm_template}> RvvType<T, lmul>
 {camel_case(binary_op)}(RvvType<T, lmul> vs1, T xs2, size_t vl) {{
   if constexpr (std::is_floating_point_v<T>) {{
@@ -776,9 +827,11 @@ template<typename T, Lmul lmul {vxrm_template}> RvvType<T, lmul>
   }} else {{
     return vs1; // Should not be called
   }}
-}}""")
+}}"""
+                )
             else:
-                header.append(f"""
+                header.append(
+                    f"""
 template<typename T, Lmul lmul {vxrm_template}> RvvType<T, lmul>
 {camel_case(binary_op)}(RvvType<T, lmul> vs1, T xs2, size_t vl) {{
   if constexpr (std::is_floating_point_v<T>) {{
@@ -786,31 +839,39 @@ template<typename T, Lmul lmul {vxrm_template}> RvvType<T, lmul>
   }} else {{
     return SameTypeBinaryOpTraits<T, lmul>::{binary_op.lower()}_vx(vs1, xs2 {vxrm_call}, vl);
   }}
-}}""")
+}}"""
+                )
 
         if binary_op == "VFSQRT":
-            header.append(f"""
+            header.append(
+                f"""
 template<typename T, Lmul lmul> RvvType<T, lmul>
 Vfsqrt(RvvType<T, lmul> vs2, size_t vl) {{
   return SameTypeBinaryOpTraits<T, lmul>::vfsqrt_v(vs2, vl);
-}}""")
+}}"""
+            )
 
         # .vi wrappers
         if binary_op in ["VADD", "VAND", "VOR", "VXOR", "VSADD", "VSADDU"]:
-            header.append(f"""
+            header.append(
+                f"""
 template<typename T, Lmul lmul> RvvType<T, lmul>
 {camel_case(binary_op)}Vi(RvvType<T, lmul> vs1, size_t vl) {{
   return SameTypeBinaryOpTraits<T, lmul>::{binary_op.lower()}_vx(vs1, 5, vl);
-}}""")
+}}"""
+            )
         if binary_op == "VRSUB":
-            header.append(f"""
+            header.append(
+                f"""
 template<typename T, Lmul lmul> RvvType<T, lmul>
 VrsubVi(RvvType<T, lmul> vs1, size_t vl) {{
   return SameTypeBinaryOpTraits<T, lmul>::vrsub_vx(vs1, 5, vl);
-}}""")
+}}"""
+            )
 
     # Float Comparison Wrappers
-    header.append("""
+    header.append(
+        """
 template<typename T, Lmul lmul> MaskType<T, lmul> Vmfeq(RvvType<T, lmul> vs2, RvvType<T, lmul> vs1, size_t vl) { return FloatComparisonOpTraits<T, lmul>::vmfeq_vv(vs2, vs1, vl); }
 template<typename T, Lmul lmul> MaskType<T, lmul> Vmfeq(RvvType<T, lmul> vs2, T fs1, size_t vl) { return FloatComparisonOpTraits<T, lmul>::vmfeq_vf(vs2, fs1, vl); }
 template<typename T, Lmul lmul> MaskType<T, lmul> Vmfne(RvvType<T, lmul> vs2, RvvType<T, lmul> vs1, size_t vl) { return FloatComparisonOpTraits<T, lmul>::vmfne_vv(vs2, vs1, vl); }
@@ -821,17 +882,21 @@ template<typename T, Lmul lmul> MaskType<T, lmul> Vmfle(RvvType<T, lmul> vs2, Rv
 template<typename T, Lmul lmul> MaskType<T, lmul> Vmfle(RvvType<T, lmul> vs2, T fs1, size_t vl) { return FloatComparisonOpTraits<T, lmul>::vmfle_vf(vs2, fs1, vl); }
 template<typename T, Lmul lmul> MaskType<T, lmul> Vmfgt(RvvType<T, lmul> vs2, T fs1, size_t vl) { return FloatComparisonOpTraits<T, lmul>::vmfgt_vf(vs2, fs1, vl); }
 template<typename T, Lmul lmul> MaskType<T, lmul> Vmfge(RvvType<T, lmul> vs2, T fs1, size_t vl) { return FloatComparisonOpTraits<T, lmul>::vmfge_vf(vs2, fs1, vl); }
-""")
+"""
+    )
 
     # Float Misc Wrappers
-    header.append("""
+    header.append(
+        """
 template<typename T, Lmul lmul> RvvType<uint32_t, lmul> Vfclass(RvvType<T, lmul> vs2, size_t vl) { return FloatMiscOpTraits<T, lmul>::vfclass_v(vs2, vl); }
 template<typename T, Lmul lmul> RvvType<T, lmul> Vfmerge(RvvType<T, lmul> vs2, T fs1, MaskType<T, lmul> v0, size_t vl) { return FloatMiscOpTraits<T, lmul>::vfmerge_vfm(vs2, fs1, v0, vl); }
 template<typename T, Lmul lmul> RvvType<T, lmul> Vfmv(T fs1, size_t vl) { return FloatMiscOpTraits<T, lmul>::vfmv_v_f(fs1, vl); }
-""")
+"""
+    )
 
     # Float Convert Wrappers
-    header.append("""
+    header.append(
+        """
 template<typename T, Lmul lmul> RvvType<T, lmul> VfcvtFX(RvvType<int32_t, lmul> vs2, size_t vl) { return FloatConvertOpTraits<T, lmul>::vfcvt_f_x_v(vs2, vl); }
 template<typename T, Lmul lmul> RvvType<T, lmul> VfcvtFXu(RvvType<uint32_t, lmul> vs2, size_t vl) { return FloatConvertOpTraits<T, lmul>::vfcvt_f_xu_v(vs2, vl); }
 template<typename T, Lmul lmul> RvvType<int32_t, lmul> VfcvtXF(RvvType<T, lmul> vs2, size_t vl) { return FloatConvertOpTraits<T, lmul>::vfcvt_x_f_v(vs2, vl); }
@@ -846,7 +911,8 @@ template<typename T, Lmul lmul> RvvType<float, Widen(lmul)> VfwcvtFX(RvvType<T, 
 template<typename T, Lmul lmul> RvvType<T, lmul> VfncvtXF(RvvType<float, Widen(lmul)> vs2, size_t vl) {
   return FloatWidenNarrowConvertTraits<T, lmul>::vfncvt_v(vs2, vl);
 }
-""")
+"""
+    )
 
     # Shift Wrappers
     for shift_op in ["VSLL", "VSRL", "VSRA", "VSSRA", "VSSRL"]:
@@ -857,7 +923,8 @@ template<typename T, Lmul lmul> RvvType<T, lmul> VfncvtXF(RvvType<float, Widen(l
             template_decl = "template<typename T, Lmul lmul>"
             vxrm_arg = ""
 
-        header.append(f"""
+        header.append(
+            f"""
 {template_decl} RvvType<T, lmul>
 {camel_case(shift_op)}(RvvType<T, lmul> vs1, RvvType<std::make_unsigned_t<T>, lmul> vs2, size_t vl) {{
   return MixedSignSameWidthTypeBinaryOpTraits<T, lmul>::{shift_op.lower()}_vv(vs1, vs2{vxrm_arg}, vl);
@@ -869,11 +936,13 @@ template<typename T, Lmul lmul> RvvType<T, lmul> VfncvtXF(RvvType<float, Widen(l
 {template_decl} RvvType<T, lmul>
 {camel_case(shift_op)}Vi(RvvType<T, lmul> vs1, size_t vl) {{
   return {camel_case(shift_op)}<T, lmul{vxrm_arg}>(vs1, (std::make_unsigned_t<T>)5, vl);
-}}""")
+}}"""
+        )
 
     # Widening Wrappers
     for op in ["VWADD", "VWSUB", "VWMUL"]:
-        header.append(f"""
+        header.append(
+            f"""
 template<typename T, Lmul lmul> RvvType<WidenType<T>, Widen(lmul)>
 {camel_case(op)}(RvvType<T, lmul> vs2, RvvType<T, lmul> vs1, size_t vl) {{
   return WideningBinaryOpTraits<T, lmul>::{op.lower()}_vv(vs2, vs1, vl);
@@ -881,11 +950,13 @@ template<typename T, Lmul lmul> RvvType<WidenType<T>, Widen(lmul)>
 template<typename T, Lmul lmul> RvvType<WidenType<T>, Widen(lmul)>
 {camel_case(op)}(RvvType<T, lmul> vs2, T xs1, size_t vl) {{
   return WideningBinaryOpTraits<T, lmul>::{op.lower()}_vx(vs2, xs1, vl);
-}}""")
+}}"""
+        )
 
     # Widen Wide Wrappers
     for op in ["VWADD", "VWSUB"]:
-        header.append(f"""
+        header.append(
+            f"""
 template<typename T, Lmul lmul> RvvType<WidenType<T>, Widen(lmul)>
 {camel_case(op)}W(RvvType<WidenType<T>, Widen(lmul)> vs2, RvvType<T, lmul> vs1, size_t vl) {{
   return WidenWideBinaryOpTraits<T, lmul>::{op.lower()}_wv(vs2, vs1, vl);
@@ -893,24 +964,26 @@ template<typename T, Lmul lmul> RvvType<WidenType<T>, Widen(lmul)>
 template<typename T, Lmul lmul> RvvType<WidenType<T>, Widen(lmul)>
 {camel_case(op)}W(RvvType<WidenType<T>, Widen(lmul)> vs2, T xs1, size_t vl) {{
   return WidenWideBinaryOpTraits<T, lmul>::{op.lower()}_wx(vs2, xs1, vl);
-}}""")
+}}"""
+        )
 
     # Ternary Wrappers
     for ternary_op in [
-        "VMACC",
-        "VNMSAC",
-        "VMADD",
-        "VNMSUB",
-        "VFMACC",
-        "VFNMACC",
-        "VFMADD",
-        "VFNMADD",
-        "VFMSAC",
-        "VFNMSAC",
-        "VFMSUB",
-        "VFNMSUB",
+            "VMACC",
+            "VNMSAC",
+            "VMADD",
+            "VNMSUB",
+            "VFMACC",
+            "VFNMACC",
+            "VFMADD",
+            "VFNMADD",
+            "VFMSAC",
+            "VFNMSAC",
+            "VFMSUB",
+            "VFNMSUB",
     ]:
-        header.append(f"""
+        header.append(
+            f"""
 template<typename T, Lmul lmul> RvvType<T, lmul>
 {camel_case(ternary_op)}(RvvType<T, lmul> vd, T rs1, RvvType<T, lmul> vs2, size_t vl) {{
   if constexpr (std::is_floating_point_v<T>) {{
@@ -918,10 +991,12 @@ template<typename T, Lmul lmul> RvvType<T, lmul>
   }} else {{
     return SameTypeBinaryOpTraits<T, lmul>::{ternary_op.lower()}_vx(vd, rs1, vs2, vl);
   }}
-}}""")
+}}"""
+        )
 
     # Comparison Wrappers
-    header.append("""
+    header.append(
+        """
 template<typename T, Lmul lmul> MaskType<T, lmul> Vmseq(RvvType<T, lmul> vs2, RvvType<T, lmul> vs1, size_t vl) { return ComparisonOpTraits<T, lmul>::vmseq_vv(vs2, vs1, vl); }
 template<typename T, Lmul lmul> MaskType<T, lmul> Vmseq(RvvType<T, lmul> vs2, T rs1, size_t vl) { return ComparisonOpTraits<T, lmul>::vmseq_vx(vs2, rs1, vl); }
 template<typename T, Lmul lmul> MaskType<T, lmul> Vmsne(RvvType<T, lmul> vs2, RvvType<T, lmul> vs1, size_t vl) { return ComparisonOpTraits<T, lmul>::vmsne_vv(vs2, vs1, vl); }
@@ -932,10 +1007,12 @@ template<typename T, Lmul lmul> MaskType<T, lmul> Vmsle(RvvType<T, lmul> vs2, Rv
 template<typename T, Lmul lmul> MaskType<T, lmul> Vmsle(RvvType<T, lmul> vs2, T rs1, size_t vl) { return ComparisonOpTraits<T, lmul>::vmsle_vx(vs2, rs1, vl); }
 template<typename T, Lmul lmul> MaskType<T, lmul> Vmsgt(RvvType<T, lmul> vs2, T rs1, size_t vl) { return ComparisonOpTraits<T, lmul>::vmsgt_vx(vs2, rs1, vl); }
 template<typename T, Lmul lmul> MaskType<T, lmul> Vmsge(RvvType<T, lmul> vs2, T rs1, size_t vl) { return ComparisonOpTraits<T, lmul>::vmsge_vx(vs2, rs1, vl); }
-""")
+"""
+    )
 
     # Carry Wrappers
-    header.append("""
+    header.append(
+        """
 template<typename T, Lmul lmul> RvvType<T, lmul> Vadc(RvvType<T, lmul> vs2, RvvType<T, lmul> vs1, MaskType<T, lmul> v0, size_t vl) { return CarryOpTraits<T, lmul>::vadc_vvm(vs2, vs1, v0, vl); }
 template<typename T, Lmul lmul> RvvType<T, lmul> Vadc(RvvType<T, lmul> vs2, T rs1, MaskType<T, lmul> v0, size_t vl) { return CarryOpTraits<T, lmul>::vadc_vxm(vs2, rs1, v0, vl); }
 template<typename T, Lmul lmul> MaskType<T, lmul> Vmadc(RvvType<T, lmul> vs2, RvvType<T, lmul> vs1, MaskType<T, lmul> v0, size_t vl) { return CarryOpTraits<T, lmul>::vmadc_vvm(vs2, vs1, v0, vl); }
@@ -948,11 +1025,13 @@ template<typename T, Lmul lmul> MaskType<T, lmul> Vmsbc(RvvType<T, lmul> vs2, Rv
 template<typename T, Lmul lmul> MaskType<T, lmul> Vmsbc(RvvType<T, lmul> vs2, T rs1, MaskType<T, lmul> v0, size_t vl) { return CarryOpTraits<T, lmul>::vmsbc_vxm(vs2, rs1, v0, vl); }
 template<typename T, Lmul lmul> MaskType<T, lmul> Vmsbc(RvvType<T, lmul> vs2, RvvType<T, lmul> vs1, size_t vl) { return CarryOpTraits<T, lmul>::vmsbc_vv(vs2, vs1, vl); }
 template<typename T, Lmul lmul> MaskType<T, lmul> Vmsbc(RvvType<T, lmul> vs2, T rs1, size_t vl) { return CarryOpTraits<T, lmul>::vmsbc_vx(vs2, rs1, vl); }
-""")
+"""
+    )
 
     # Extension Wrappers
     for factor in [2, 4, 8]:
-        header.append(f"""
+        header.append(
+            f"""
 template<typename T, Lmul lmul> RvvType<T, lmul>
 VsextF{factor}(NarrowType<T, lmul, {factor}> vs2, size_t vl) {{
   return ExtensionOpTraits<T, lmul, {factor}>::fn(vs2, vl);
@@ -960,7 +1039,8 @@ VsextF{factor}(NarrowType<T, lmul, {factor}> vs2, size_t vl) {{
 template<typename T, Lmul lmul> RvvType<T, lmul>
 VzextF{factor}(NarrowType<T, lmul, {factor}> vs2, size_t vl) {{
   return ExtensionOpTraits<T, lmul, {factor}>::fn(vs2, vl);
-}}""")
+}}"""
+        )
 
     # Merge/MV Wrappers
     header.append("template<typename T, Lmul lmul> struct MergeOpTraits {};")
@@ -973,13 +1053,16 @@ VzextF{factor}(NarrowType<T, lmul, {factor}> vs2, size_t vl) {{
             f"template<> struct MergeOpTraits<{scalar_type}_t, Lmul::{lmul}> {{ static constexpr auto vmerge_vvm = __riscv_vmerge_vvm_{base_type}; static constexpr auto vmv_v_v = __riscv_vmv_v_v_{base_type}; }};"
         )
 
-    header.append("""
+    header.append(
+        """
 template<typename T, Lmul lmul> RvvType<T, lmul> Vmerge(RvvType<T, lmul> vs2, RvvType<T, lmul> vs1, MaskType<T, lmul> v0, size_t vl) { return MergeOpTraits<T, lmul>::vmerge_vvm(vs2, vs1, v0, vl); }
 template<typename T, Lmul lmul> RvvType<T, lmul> Vmv(RvvType<T, lmul> vs1, size_t vl) { return MergeOpTraits<T, lmul>::vmv_v_v(vs1, vl); }
-""")
+"""
+    )
 
     header.append("#endif  // CORALNPU_TEST_UTILS_RVV_CPP_UTIL_H_")
     print("\n".join(header))
+
 
 if __name__ == '__main__':
     main()

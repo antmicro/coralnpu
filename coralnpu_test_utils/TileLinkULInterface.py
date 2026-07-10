@@ -23,14 +23,16 @@ import random
 from coralnpu_test_utils.secded_golden import get_cmd_intg, get_data_intg, get_rsp_intg
 
 
-def create_a_channel_req(address,
-                         data=0,
-                         mask=0,
-                         source=1,
-                         size=None,
-                         param=0,
-                         width=32,
-                         is_read=False):
+def create_a_channel_req(
+    address,
+    data=0,
+    mask=0,
+    source=1,
+    size=None,
+    param=0,
+    width=32,
+    is_read=False
+):
     """Creates a standard TileLink-UL request dictionary."""
     num_bytes = width // 8
     if size is None:
@@ -76,15 +78,17 @@ class TileLinkULInterface:
         device_if_name (str, optional): The prefix for the device-side interface signals.
     """
 
-    def __init__(self,
-                 dut,
-                 host_if_name=None,
-                 device_if_name=None,
-                 clock_name="clock",
-                 reset_name="reset",
-                 reset_active_low=False,
-                 width=32,
-                 backpressure=False):
+    def __init__(
+        self,
+        dut,
+        host_if_name=None,
+        device_if_name=None,
+        clock_name="clock",
+        reset_name="reset",
+        reset_active_low=False,
+        width=32,
+        backpressure=False
+    ):
         self.dut = dut
         self.clock = getattr(dut, clock_name)
         self.reset = getattr(dut, reset_name)
@@ -104,18 +108,22 @@ class TileLinkULInterface:
             self.host_a_fifo = Queue()
             self.host_d_fifo = Queue()
             self._agents.append(
-                cocotb.start_soon(self._host_a_driver(host_if_name)))
+                cocotb.start_soon(self._host_a_driver(host_if_name))
+            )
             self._agents.append(
-                cocotb.start_soon(self._host_d_monitor(host_if_name)))
+                cocotb.start_soon(self._host_d_monitor(host_if_name))
+            )
 
         if device_if_name:
             self.device_a_fifo = Queue()
             self.device_d_fifo = Queue()
             self._device_a_ready = True  # Default to being ready
             self._agents.append(
-                cocotb.start_soon(self._device_a_monitor(device_if_name)))
+                cocotb.start_soon(self._device_a_monitor(device_if_name))
+            )
             self._agents.append(
-                cocotb.start_soon(self._device_d_driver(device_if_name)))
+                cocotb.start_soon(self._device_d_driver(device_if_name))
+            )
 
     def device_a_set_ready(self, value):
         """Set the ready signal for the device A channel monitor."""
@@ -137,7 +145,8 @@ class TileLinkULInterface:
         a_ready = getattr(self.dut, f"{prefix}_a_ready")
 
         a_valid.value = 0
-        for prop in ["opcode", "param", "size", "source", "address", "mask", "data"]:
+        for prop in ["opcode", "param", "size", "source", "address", "mask",
+                     "data"]:
             getattr(self.dut, f"{prefix}_a_bits_{prop}").value = 0
 
         while True:
@@ -148,11 +157,13 @@ class TileLinkULInterface:
                     break
             txn = await self.host_a_fifo.get()
             a_valid.value = 1
-            for prop in ["opcode", "param", "size", "source", "address", "mask", "data"]:
+            for prop in ["opcode", "param", "size", "source", "address",
+                         "mask", "data"]:
                 getattr(self.dut, f"{prefix}_a_bits_{prop}").value = txn[prop]
             for field, value in txn["user"].items():
-                getattr(self.dut,
-                        f"{prefix}_a_bits_user_{field}").value = value
+                getattr(
+                    self.dut, f"{prefix}_a_bits_user_{field}"
+                ).value = value
             await FallingEdge(self.clock)
             timeout_count = 0
             while a_ready.value == 0:
@@ -177,25 +188,34 @@ class TileLinkULInterface:
                 if d_valid.value and d_ready.value == 1:
                     # Capture the transaction
                     txn = {'user': {}}
-                    for prop in ["opcode", "param", "size", "source", "sink", "data", "error"]:
-                        txn[prop] = getattr(self.dut, f"{prefix}_d_bits_{prop}").value
+                    for prop in ["opcode", "param", "size", "source", "sink",
+                                 "data", "error"]:
+                        txn[prop] = getattr(
+                            self.dut, f"{prefix}_d_bits_{prop}"
+                        ).value
                     user_fields = ["rsp_intg", "data_intg"]
                     for field in user_fields:
                         signal_name = f"{prefix}_d_bits_user_{field}"
                         if hasattr(self.dut, signal_name):
-                            txn["user"][field] = getattr(self.dut, signal_name).value
+                            txn["user"][field] = getattr(
+                                self.dut, signal_name
+                            ).value
 
                     await self.host_d_fifo.put(txn)
             except Exception as e:
                 try:
-                    is_reset = (self.reset.value == 0) if self.reset_active_low else (self.reset.value == 1)
+                    is_reset = (
+                        self.reset.value == 0
+                    ) if self.reset_active_low else (self.reset.value == 1)
                 except Exception:
                     is_reset = True
                 if is_reset:
                     x_count = 0
                 else:
                     x_count += 1
-                    self.dut._log.warning(f"X seen in _host_d_monitor ({prefix}): {e} ({x_count}/3)")
+                    self.dut._log.warning(
+                        f"X seen in _host_d_monitor ({prefix}): {e} ({x_count}/3)"
+                    )
                     if x_count >= 3:
                         assert False, f"Too many 'X' values detected in _host_d_monitor on {prefix}"
 
@@ -212,25 +232,35 @@ class TileLinkULInterface:
             try:
                 if a_valid.value and a_ready.value == 1:
                     txn = {"user": {}}
-                    for prop in ["opcode", "param", "size", "source", "address", "mask", "data"]:
-                        txn[prop] = getattr(self.dut, f"{prefix}_a_bits_{prop}").value
-                    user_fields = ["cmd_intg", "data_intg", "instr_type", "rsvd"]
+                    for prop in ["opcode", "param", "size", "source",
+                                 "address", "mask", "data"]:
+                        txn[prop] = getattr(
+                            self.dut, f"{prefix}_a_bits_{prop}"
+                        ).value
+                    user_fields = [
+                        "cmd_intg", "data_intg", "instr_type", "rsvd"
+                    ]
                     for field in user_fields:
                         signal_name = f"{prefix}_a_bits_user_{field}"
                         if hasattr(self.dut, signal_name):
-                            txn["user"][field] = getattr(self.dut,
-                                                         signal_name).value
+                            txn["user"][field] = getattr(
+                                self.dut, signal_name
+                            ).value
                     await self.device_a_fifo.put(txn)
             except Exception as e:
                 try:
-                    is_reset = (self.reset.value == 0) if self.reset_active_low else (self.reset.value == 1)
+                    is_reset = (
+                        self.reset.value == 0
+                    ) if self.reset_active_low else (self.reset.value == 1)
                 except Exception:
                     is_reset = True
                 if is_reset:
                     x_count = 0
                 else:
                     x_count += 1
-                    self.dut._log.warning(f"X seen in _device_a_monitor ({prefix}): {e} ({x_count}/3)")
+                    self.dut._log.warning(
+                        f"X seen in _device_a_monitor ({prefix}): {e} ({x_count}/3)"
+                    )
                     if x_count >= 3:
                         assert False, f"Too many 'X' values detected in _device_a_monitor on {prefix}"
 
@@ -241,7 +271,8 @@ class TileLinkULInterface:
         d_ready = getattr(self.dut, f"{prefix}_d_ready")
 
         d_valid.value = 0
-        for prop in ["opcode", "param", "size", "source", "sink", "data", "error"]:
+        for prop in ["opcode", "param", "size", "source", "sink", "data",
+                     "error"]:
             getattr(self.dut, f"{prefix}_d_bits_{prop}").value = 0
 
         while True:
@@ -252,11 +283,13 @@ class TileLinkULInterface:
                     break
             txn = await self.device_d_fifo.get()
             d_valid.value = 1
-            for prop in ["opcode", "param", "size", "source", "sink", "data", "error"]:
+            for prop in ["opcode", "param", "size", "source", "sink", "data",
+                         "error"]:
                 getattr(self.dut, f"{prefix}_d_bits_{prop}").value = txn[prop]
             for field, value in txn["user"].items():
-                getattr(self.dut,
-                        f"{prefix}_d_bits_user_{field}").value = value
+                getattr(
+                    self.dut, f"{prefix}_d_bits_user_{field}"
+                ).value = value
             await FallingEdge(self.clock)
             timeout_count = 0
             while d_ready.value == 0:
@@ -279,15 +312,17 @@ class TileLinkULInterface:
         """Get a request from the device A channel."""
         return await self.device_a_fifo.get()
 
-    async def device_respond(self,
-                             opcode,
-                             param,
-                             size,
-                             source,
-                             sink=0,
-                             data=0,
-                             error=0,
-                             width=None):
+    async def device_respond(
+        self,
+        opcode,
+        param,
+        size,
+        source,
+        sink=0,
+        data=0,
+        error=0,
+        width=None
+    ):
         """Send a response from the device."""
         if width is None:
             width = self.width

@@ -27,12 +27,20 @@ async def core_mini_rvv_mobilenet_v1(dut):
     elf_files = ['run_mobilenet_v1_025_partial_binary.elf']
     for elf_file in elf_files:
         await fixture.load_elf_and_lookup_symbols(
-            r.Rlocation('coralnpu_hw/tests/cocotb/tutorial/tfmicro/' + elf_file),
-            ['inference_status', 'inference_status_message'])
+            r.
+            Rlocation('coralnpu_hw/tests/cocotb/tutorial/tfmicro/' + elf_file),
+            ['inference_status', 'inference_status_message']
+        )
         # NOTE: Running the example in DEBUG mode is too slow could take more than 500Million cycles
         cycle_count = await fixture.run_to_halt(timeout_cycles=130_000_000)
-        print(f"Total number of execution cycles: {cycle_count} \n", flush=True)
-        tflite_inference_status = (await fixture.read_word('inference_status')).view(np.int32)
-        tflite_inference_message = bytes((await fixture.read('inference_status_message', 31))).decode()
-        assert  tflite_inference_status == 0 , tflite_inference_message
+        print(
+            f"Total number of execution cycles: {cycle_count} \n", flush=True
+        )
+        tflite_inference_status = (
+            await fixture.read_word('inference_status')
+        ).view(np.int32)
+        tflite_inference_message = bytes(
+            (await fixture.read('inference_status_message', 31))
+        ).decode()
+        assert tflite_inference_status == 0, tflite_inference_message
         print(f" \n Partial mobilenet Invoke() successful \n", flush=True)

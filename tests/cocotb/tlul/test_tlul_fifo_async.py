@@ -41,28 +41,33 @@ async def test_async_crossing(dut):
     """Verify requests are arbitrated and responses are routed correctly."""
     await setup_dut(dut)
 
-    host_if = TileLinkULInterface(dut,
-                                  host_if_name="io_tl_h",
-                                  clock_name="io_clk_h_i",
-                                  reset_name="io_rst_h_i")
-    device_if = TileLinkULInterface(dut,
-                                    device_if_name="io_tl_d",
-                                    clock_name="io_clk_d_i",
-                                    reset_name="io_rst_d_i")
+    host_if = TileLinkULInterface(
+        dut,
+        host_if_name="io_tl_h",
+        clock_name="io_clk_h_i",
+        reset_name="io_rst_h_i"
+    )
+    device_if = TileLinkULInterface(
+        dut,
+        device_if_name="io_tl_d",
+        clock_name="io_clk_d_i",
+        reset_name="io_rst_d_i"
+    )
 
-    req = create_a_channel_req(address=0x1000,
-                               data=0x11223344,
-                               mask=0xF,
-                               source=1)
+    req = create_a_channel_req(
+        address=0x1000, data=0x11223344, mask=0xF, source=1
+    )
 
     # Start a concurrent task to handle the device-side interaction
     async def device_responder():
         req_seen = await device_if.device_get_request()
         assert req_seen["source"] == req["source"]
-        await device_if.device_respond(opcode=0,
-                                       param=0,
-                                       size=req_seen["size"],
-                                       source=req_seen["source"])
+        await device_if.device_respond(
+            opcode=0,
+            param=0,
+            size=req_seen["size"],
+            source=req_seen["source"]
+        )
 
     device_task = cocotb.start_soon(device_responder())
 

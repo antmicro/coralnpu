@@ -29,7 +29,8 @@ def main():
 
     # 1. Create a ZIP in memory containing the ELF as BOOT.ELF
     zip_buffer = io.BytesIO()
-    with zipfile.ZipFile(zip_buffer, "w", compression=zipfile.ZIP_STORED) as zf:
+    with zipfile.ZipFile(zip_buffer, "w",
+                         compression=zipfile.ZIP_STORED) as zf:
         zf.write(args.elf, "BOOT.ELF")
 
     zip_data = zip_buffer.getvalue()
@@ -52,7 +53,9 @@ def main():
     zip_start_offset = header_size
     eocd_offset = zip_start_offset + eocd_pos
 
-    header = struct.pack("<III5I", magic, eocd_offset, zip_start_offset, 0, 0, 0, 0, 0)
+    header = struct.pack(
+        "<III5I", magic, eocd_offset, zip_start_offset, 0, 0, 0, 0, 0
+    )
 
     # 4. Write Header + ZIP
     with open(args.output, "wb") as f:

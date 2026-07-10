@@ -63,7 +63,8 @@ async def setup_dut(dut):
     for name in unused_hosts:
         prefix = f"io_hosts_{name}"
         for signal in dir(dut):
-            if signal.startswith(prefix + "_a_") or signal == f"{prefix}_d_ready":
+            if signal.startswith(prefix +
+                                 "_a_") or signal == f"{prefix}_d_ready":
                 try:
                     getattr(dut, signal).value = 0
                 except Exception:
@@ -77,7 +78,8 @@ async def setup_dut(dut):
     for name in unused_devices:
         prefix = f"io_devices_{name}"
         for signal in dir(dut):
-            if signal.startswith(prefix + "_d_") or signal == f"{prefix}_a_ready":
+            if signal.startswith(prefix +
+                                 "_d_") or signal == f"{prefix}_a_ready":
                 try:
                     getattr(dut, signal).value = 0
                 except Exception:
@@ -95,20 +97,24 @@ async def setup_dut(dut):
 
     interfaces = {
         "hosts": [
-            TileLinkULInterface(dut,
-                                host_if_name=f"io_hosts_{name}",
-                                clock_name="clock" if name != "test_host_32" else "io_async_ports_hosts_test_clock",
-                                reset_name="reset" if name != "test_host_32" else "io_async_ports_hosts_test_reset",
-                                width=host_widths[name])
-            for name, _ in HOST_MAP.items()
+            TileLinkULInterface(
+                dut,
+                host_if_name=f"io_hosts_{name}",
+                clock_name="clock" if name != "test_host_32" else
+                "io_async_ports_hosts_test_clock",
+                reset_name="reset" if name != "test_host_32" else
+                "io_async_ports_hosts_test_reset",
+                width=host_widths[name]
+            ) for name, _ in HOST_MAP.items()
         ],
         "devices": [
-            TileLinkULInterface(dut,
-                                device_if_name=f"io_devices_{name}",
-                                clock_name="clock",
-                                reset_name="reset",
-                                width=device_widths[name])
-            for name, _ in DEVICE_MAP.items()
+            TileLinkULInterface(
+                dut,
+                device_if_name=f"io_devices_{name}",
+                clock_name="clock",
+                reset_name="reset",
+                width=device_widths[name]
+            ) for name, _ in DEVICE_MAP.items()
         ],
     }
 
@@ -121,7 +127,6 @@ async def setup_dut(dut):
     await ClockCycles(dut.clock, 5)
 
     return interfaces, clock
-
 
 
 # --- Test Cases ---
@@ -137,10 +142,9 @@ async def test_coralnpu_core_to_sram(dut):
 
     # Send a 128-bit write request from the host
     test_data = 0x112233445566778899AABBCCDDEEFF00
-    write_txn = create_a_channel_req(address=SRAM_BASE,
-                                     data=test_data,
-                                     mask=0xFFFF,
-                                     width=host_if.width)
+    write_txn = create_a_channel_req(
+        address=SRAM_BASE, data=test_data, mask=0xFFFF, width=host_if.width
+    )
     await with_timeout(host_if.host_put(write_txn), timeout_ns, "ns")
 
     # Expect a single 128-bit transaction on the device side
@@ -149,10 +153,10 @@ async def test_coralnpu_core_to_sram(dut):
     assert req["data"] == test_data
 
     await with_timeout(
-        device_if.device_respond(opcode=0,
-                                 param=0,
-                                 size=req["size"],
-                                 source=req["source"]), timeout_ns, "ns")
+        device_if.device_respond(
+            opcode=0, param=0, size=req["size"], source=req["source"]
+        ), timeout_ns, "ns"
+    )
 
     # Receive the response on the host side
     resp = await with_timeout(host_if.host_get_response(), timeout_ns, "ns")
@@ -168,22 +172,23 @@ async def test_coralnpu_core_to_invalid_addr(dut):
     timeout_ns = TIMEOUT_CYCLES * clock.period
 
     # Send a write request to an invalid address
-    write_txn = create_a_channel_req(address=INVALID_ADDR,
-                                     data=0,
-                                     mask=0xF,
-                                     width=host_if.width)
+    write_txn = create_a_channel_req(
+        address=INVALID_ADDR, data=0, mask=0xF, width=host_if.width
+    )
     await with_timeout(host_if.host_put(write_txn), timeout_ns, "ns")
 
     # Expect an error response
     try:
-        resp = await with_timeout(host_if.host_get_response(), timeout_ns,
-                                  "ns")
+        resp = await with_timeout(
+            host_if.host_get_response(), timeout_ns, "ns"
+        )
         assert resp["error"] == 1
         assert resp["source"] == write_txn["source"]
     except Exception as e:
         # Allow the simulation to run for a few more cycles to get a clean waveform
         await ClockCycles(dut.clock, 20)
         raise e
+
 
 @cocotb.test(timeout_time=10, timeout_unit="us")
 async def test_coralnpu_core_to_uart1(dut):
@@ -195,24 +200,27 @@ async def test_coralnpu_core_to_uart1(dut):
 
     # Send a 128-bit write request
     test_data = 0x112233445566778899AABBCCDDEEFF00
-    write_txn = create_a_channel_req(address=UART1_BASE,
-                                     data=test_data,
-                                     mask=0xF0F0,
-                                     width=host_if.width)
+    write_txn = create_a_channel_req(
+        address=UART1_BASE, data=test_data, mask=0xF0F0, width=host_if.width
+    )
     await with_timeout(host_if.host_put(write_txn), timeout_ns, "ns")
 
     # Expect four 32-bit transactions on the device side, order not guaranteed
     received_reqs = []
     for i in range(4):
-        req = await with_timeout(device_if.device_get_request(), timeout_ns,
-                                 "ns")
+        req = await with_timeout(
+            device_if.device_get_request(), timeout_ns, "ns"
+        )
         received_reqs.append(req)
         await with_timeout(
-            device_if.device_respond(opcode=0,
-                                     param=0,
-                                     size=req["size"],
-                                     source=req["source"],
-                                     width=device_if.width), timeout_ns, "ns")
+            device_if.device_respond(
+                opcode=0,
+                param=0,
+                size=req["size"],
+                source=req["source"],
+                width=device_if.width
+            ), timeout_ns, "ns"
+        )
 
     # Sort received requests by address for comparison
     received_reqs.sort(key=lambda r: r["address"].integer)
@@ -243,10 +251,12 @@ async def test_test_host_32_to_coralnpu_device(dut):
     timeout_ns = TIMEOUT_CYCLES * clock.period
 
     # Send a 32-bit write request
-    write_txn = create_a_channel_req(address=CORALNPU_DEVICE_BASE,
-                                     data=0x12345678,
-                                     mask=0xF,
-                                     width=host_if.width)
+    write_txn = create_a_channel_req(
+        address=CORALNPU_DEVICE_BASE,
+        data=0x12345678,
+        mask=0xF,
+        width=host_if.width
+    )
     await with_timeout(host_if.host_put(write_txn), timeout_ns, "ns")
 
     # Expect a single 128-bit transaction on the device side
@@ -256,11 +266,14 @@ async def test_test_host_32_to_coralnpu_device(dut):
 
     # Send a response from the device
     await with_timeout(
-        device_if.device_respond(opcode=0,
-                                 param=0,
-                                 size=req["size"],
-                                 source=req["source"],
-                                 width=device_if.width), timeout_ns, "ns")
+        device_if.device_respond(
+            opcode=0,
+            param=0,
+            size=req["size"],
+            source=req["source"],
+            width=device_if.width
+        ), timeout_ns, "ns"
+    )
 
     # Expect a single response on the host side
     resp = await with_timeout(host_if.host_get_response(), timeout_ns, "ns")
@@ -276,10 +289,12 @@ async def test_coralnpu_core_to_coralnpu_device(dut):
     timeout_ns = TIMEOUT_CYCLES * clock.period
 
     # Send a 128-bit write request
-    write_txn = create_a_channel_req(address=CORALNPU_DEVICE_BASE,
-                                     data=0x112233445566778899AABBCCDDEEFF00,
-                                     mask=0xFFFF,
-                                     width=host_if.width)
+    write_txn = create_a_channel_req(
+        address=CORALNPU_DEVICE_BASE,
+        data=0x112233445566778899AABBCCDDEEFF00,
+        mask=0xFFFF,
+        width=host_if.width
+    )
     await with_timeout(host_if.host_put(write_txn), timeout_ns, "ns")
 
     # Expect a single 128-bit transaction on the device side
@@ -289,17 +304,14 @@ async def test_coralnpu_core_to_coralnpu_device(dut):
 
     # Send a response from the device
     await with_timeout(
-        device_if.device_respond(opcode=0,
-                                 param=0,
-                                 size=req["size"],
-                                 source=req["source"]), timeout_ns, "ns")
+        device_if.device_respond(
+            opcode=0, param=0, size=req["size"], source=req["source"]
+        ), timeout_ns, "ns"
+    )
 
     # Expect a single response on the host side
     resp = await with_timeout(host_if.host_get_response(), timeout_ns, "ns")
     assert resp["error"] == 0
-
-
-
 
 
 @cocotb.test(timeout_time=10, timeout_unit="us")
@@ -317,11 +329,14 @@ async def test_test_host_32_to_coralnpu_device_csr_read(dut):
 
     async def device_responder():
         """A mock responder for the coralnpu_device."""
-        req = await with_timeout(device_if.device_get_request(), timeout_ns,
-                                 "ns")
+        req = await with_timeout(
+            device_if.device_get_request(), timeout_ns, "ns"
+        )
         # The address should be aligned to the device width (128-bit)
         aligned_addr = csr_addr
-        assert req["address"] == aligned_addr, f"Expected aligned address 0x{aligned_addr:X}, but got 0x{req['address'].integer:X}"
+        assert req[
+            "address"
+        ] == aligned_addr, f"Expected aligned address 0x{aligned_addr:X}, but got 0x{req['address'].integer:X}"
         # The CSR data is in the third 32-bit lane of the 128-bit bus.
         resp_data = halted_status << 64
         await with_timeout(
@@ -334,7 +349,8 @@ async def test_test_host_32_to_coralnpu_device_csr_read(dut):
                 width=device_if.width,
             ),
             timeout_ns,
-            "ns")
+            "ns"
+        )
 
     # Start the device responder coroutine
     cocotb.start_soon(device_responder())
@@ -357,15 +373,17 @@ async def test_test_host_32_to_coralnpu_device_csr_read(dut):
         }
     }
     read_txn["user"]["cmd_intg"] = get_cmd_intg(read_txn, width=host_if.width)
-    read_txn["user"]["data_intg"] = get_data_intg(read_txn["data"],
-                                                  width=host_if.width)
+    read_txn["user"]["data_intg"] = get_data_intg(
+        read_txn["data"], width=host_if.width
+    )
     await with_timeout(host_if.host_put(read_txn), timeout_ns, "ns")
 
     # Expect a single response on the host side with the correct data
     resp = await with_timeout(host_if.host_get_response(), timeout_ns, "ns")
     assert resp["error"] == 0
     assert resp[
-        "data"] == halted_status, f"Expected CSR data {halted_status}, but got {resp['data']}"
+        "data"
+    ] == halted_status, f"Expected CSR data {halted_status}, but got {resp['data']}"
 
 
 @cocotb.test(timeout_time=10, timeout_unit="us")
@@ -378,25 +396,28 @@ async def test_test_host_32_to_coralnpu_device_specific_addr(dut):
 
     # Send a 32-bit write request to 0x30000
     test_addr = 0x30000
-    write_txn = create_a_channel_req(address=test_addr,
-                                     data=0xDEADBEEF,
-                                     mask=0xF,
-                                     width=host_if.width)
+    write_txn = create_a_channel_req(
+        address=test_addr, data=0xDEADBEEF, mask=0xF, width=host_if.width
+    )
     await with_timeout(host_if.host_put(write_txn), timeout_ns, "ns")
 
     # Expect a single 128-bit transaction on the device side
     req = await with_timeout(device_if.device_get_request(), timeout_ns, "ns")
     assert req[
-        "address"] == test_addr, f"Expected address 0x{test_addr:X}, but got 0x{req['address'].integer:X}"
+        "address"
+    ] == test_addr, f"Expected address 0x{test_addr:X}, but got 0x{req['address'].integer:X}"
     assert req["data"] == 0xDEADBEEF
 
     # Send a response from the device
     await with_timeout(
-        device_if.device_respond(opcode=0,
-                                 param=0,
-                                 size=req["size"],
-                                 source=req["source"],
-                                 width=device_if.width), timeout_ns, "ns")
+        device_if.device_respond(
+            opcode=0,
+            param=0,
+            size=req["size"],
+            source=req["source"],
+            width=device_if.width
+        ), timeout_ns, "ns"
+    )
 
     # Expect a single response on the host side
     resp = await with_timeout(host_if.host_get_response(), timeout_ns, "ns")
@@ -413,24 +434,26 @@ async def test_wide_to_narrow_integrity(dut):
 
     # Send a 128-bit write request from the host with correct integrity
     test_data = 0x112233445566778899AABBCCDDEEFF00
-    write_txn = create_a_channel_req(address=UART1_BASE,
-                                     data=test_data,
-                                     mask=0xFFFF,
-                                     width=host_if.width)
+    write_txn = create_a_channel_req(
+        address=UART1_BASE, data=test_data, mask=0xFFFF, width=host_if.width
+    )
 
     await with_timeout(host_if.host_put(write_txn), timeout_ns, "ns")
 
     # Expect four 32-bit transactions on the device side
     received_reqs = []
     for i in range(4):
-        req = await with_timeout(device_if.device_get_request(), timeout_ns,
-                                 "ns")
+        req = await with_timeout(
+            device_if.device_get_request(), timeout_ns, "ns"
+        )
 
         # Verify that the bridge regenerated integrity correctly for each beat
-        assert req["user"]["cmd_intg"] == get_cmd_intg(req,
-                                                       width=device_if.width)
-        assert req["user"]["data_intg"] == get_data_intg(req["data"],
-                                                         width=device_if.width)
+        assert req["user"]["cmd_intg"] == get_cmd_intg(
+            req, width=device_if.width
+        )
+        assert req["user"]["data_intg"] == get_data_intg(
+            req["data"], width=device_if.width
+        )
 
         received_reqs.append(req)
 
@@ -456,10 +479,12 @@ async def test_wide_to_narrow_integrity(dut):
     # Verify that the bridge checked and regenerated integrity correctly
     expected_resp = resp.copy()
     expected_resp["error"] = 0
-    assert resp["user"]["rsp_intg"] == get_rsp_intg(expected_resp,
-                                                    width=host_if.width)
-    assert resp["user"]["data_intg"] == get_data_intg(resp["data"],
-                                                      width=host_if.width)
+    assert resp["user"]["rsp_intg"] == get_rsp_intg(
+        expected_resp, width=host_if.width
+    )
+    assert resp["user"]["data_intg"] == get_data_intg(
+        resp["data"], width=host_if.width
+    )
     assert resp["error"] == 0
 
 
@@ -540,7 +565,9 @@ async def test_16bit_writes_to_sram(dut):
                 f"Mismatch at 32-bit host addr 0x{addr:X}: expected 0x{val:X}, got 0x{read_val:X}"
             )
         else:
-            dut._log.info(f"Match at 32-bit host addr 0x{addr:X}: 0x{read_val:X}")
+            dut._log.info(
+                f"Match at 32-bit host addr 0x{addr:X}: 0x{read_val:X}"
+            )
 
     # --- 2. Test from 128-bit host (coralnpu_core) ---
     host_128_if = interfaces["hosts"][HOST_MAP["coralnpu_core"]]
@@ -558,7 +585,11 @@ async def test_16bit_writes_to_sram(dut):
             f"128-bit Host Write: addr=0x{addr:X} val=0x{val:X} (mask=0x{mask:X} data=0x{data:X})"
         )
         write_txn = create_a_channel_req(
-            address=addr, data=data, mask=mask, width=host_128_if.width, size=1
+            address=addr,
+            data=data,
+            mask=mask,
+            width=host_128_if.width,
+            size=1
         )
         await with_timeout(host_128_if.host_put(write_txn), timeout_ns, "ns")
         await with_timeout(host_128_if.host_get_response(), timeout_ns, "ns")
@@ -568,7 +599,9 @@ async def test_16bit_writes_to_sram(dut):
             address=addr, width=host_128_if.width, is_read=True, size=1
         )
         await with_timeout(host_128_if.host_put(read_txn), timeout_ns, "ns")
-        resp = await with_timeout(host_128_if.host_get_response(), timeout_ns, "ns")
+        resp = await with_timeout(
+            host_128_if.host_get_response(), timeout_ns, "ns"
+        )
 
         read_val = (int(resp["data"]) >> (byte_offset * 8)) & 0xFFFF
         if read_val != val:
@@ -577,7 +610,9 @@ async def test_16bit_writes_to_sram(dut):
                 f"Mismatch at 128-bit host addr 0x{addr:X}: expected 0x{val:X}, got 0x{read_val:X} (host_data=0x{int(resp['data']):X})"
             )
         else:
-            dut._log.info(f"Match at 128-bit host addr 0x{addr:X}: 0x{read_val:X}")
+            dut._log.info(
+                f"Match at 128-bit host addr 0x{addr:X}: 0x{read_val:X}"
+            )
 
     responder_task.cancel()
     assert mismatches == 0, f"Found {mismatches} mismatches during aligned write test."
@@ -619,7 +654,11 @@ async def test_interleaved_hosts_to_sram(dut):
     # Send 128-bit write from Host 0 to SRAM_BASE
     data0 = 0xAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
     write0 = create_a_channel_req(
-        address=SRAM_BASE, data=data0, mask=0xFFFF, width=host0_if.width, source=0
+        address=SRAM_BASE,
+        data=data0,
+        mask=0xFFFF,
+        width=host0_if.width,
+        source=0
     )
 
     # Send 128-bit write from Host 1 to SRAM_BASE + 0x100
@@ -662,12 +701,20 @@ async def test_width_bridge_same_source_pipelined(dut):
 
     data0 = 0xAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
     write0 = create_a_channel_req(
-        address=SRAM_BASE, data=data0, mask=0xFFFF, width=host_if.width, source=test_source
+        address=SRAM_BASE,
+        data=data0,
+        mask=0xFFFF,
+        width=host_if.width,
+        source=test_source
     )
 
     data1 = 0x55555555555555555555555555555555
     write1 = create_a_channel_req(
-        address=SRAM_BASE + 0x10, data=data1, mask=0xFFFF, width=host_if.width, source=test_source
+        address=SRAM_BASE + 0x10,
+        data=data1,
+        mask=0xFFFF,
+        width=host_if.width,
+        source=test_source
     )
 
     async def pipelined_responder():

@@ -33,7 +33,9 @@ class SimSpiMaster:
     def __init__(self, port=5555):
         # Try to import SPIDriver from the utils directory
         driver_path = os.path.abspath(
-            os.path.join(os.path.dirname(__file__), "../utils/coralnpu_soc_loader")
+            os.path.join(
+                os.path.dirname(__file__), "../utils/coralnpu_soc_loader"
+            )
         )
         if driver_path not in sys.path:
             sys.path.append(driver_path)
@@ -96,13 +98,14 @@ class SimSpiMaster:
         if start_offset != 0:
             line_addr = start_address - start_offset
             bytes_to_write = min(16 - start_offset, size)
-            data_chunk = data[data_ptr : data_ptr + bytes_to_write]
+            data_chunk = data[data_ptr:data_ptr + bytes_to_write]
 
             old_line_int = self.read_line(line_addr)
             old_line_bytes = old_line_int.to_bytes(16, "little")
 
             new_line_bytes = bytearray(old_line_bytes)
-            new_line_bytes[start_offset : start_offset + bytes_to_write] = data_chunk
+            new_line_bytes[start_offset:start_offset +
+                           bytes_to_write] = data_chunk
             new_line_int = int.from_bytes(new_line_bytes, "little")
 
             self.write_line(line_addr, new_line_int)
@@ -113,7 +116,7 @@ class SimSpiMaster:
 
         # 2. Middle aligned blocks
         while (end_address - current_addr) >= 16:
-            data_chunk = data[data_ptr : data_ptr + 16]
+            data_chunk = data[data_ptr:data_ptr + 16]
             self.write_line(current_addr, int.from_bytes(data_chunk, "little"))
             data_ptr += 16
             current_addr += 16
@@ -122,7 +125,7 @@ class SimSpiMaster:
         bytes_remaining = end_address - current_addr
         if bytes_remaining > 0:
             line_addr = current_addr
-            data_chunk = data[data_ptr : data_ptr + bytes_remaining]
+            data_chunk = data[data_ptr:data_ptr + bytes_remaining]
 
             old_line_int = self.read_line(line_addr)
             old_line_bytes = old_line_int.to_bytes(16, "little")
@@ -148,7 +151,7 @@ class SimSpiMaster:
             bytes_to_read = min(16 - start_offset, bytes_remaining)
             line_data = self.read_line(line_addr)
             line_bytes = line_data.to_bytes(16, "little")
-            data.extend(line_bytes[start_offset : start_offset + bytes_to_read])
+            data.extend(line_bytes[start_offset:start_offset + bytes_to_read])
             bytes_remaining -= bytes_to_read
             current_addr += bytes_to_read
 
@@ -188,7 +191,9 @@ class SramTestRunner:
                 raise ImportError(
                     "FtdiSpiMaster could not be imported. Is pyftdi installed?"
                 )
-            self.spi_master = FtdiSpiMaster(usb_serial, ftdi_port, csr_base_addr)
+            self.spi_master = FtdiSpiMaster(
+                usb_serial, ftdi_port, csr_base_addr
+            )
 
         self.continue_on_error = continue_on_error
         self.results = []
@@ -216,7 +221,9 @@ class SramTestRunner:
             self.spi_master.idle_clocking(20)
             self.results = []
 
-            patterns = ["zeros", "ones", "0x55", "0xAA", "incrementing", "random"]
+            patterns = [
+                "zeros", "ones", "0x55", "0xAA", "incrementing", "random"
+            ]
 
             # Power of two sizes from 1 up to MAX_SIZE
             sizes = []
@@ -242,14 +249,12 @@ class SramTestRunner:
                 for pattern in patterns:
                     total_tests += 1
                     success, details = self._run_single_test(size, pattern)
-                    self.results.append(
-                        {
-                            "size": size,
-                            "pattern": pattern,
-                            "success": success,
-                            "details": details,
-                        }
-                    )
+                    self.results.append({
+                        "size": size,
+                        "pattern": pattern,
+                        "success": success,
+                        "details": details,
+                    })
                     if success:
                         passed_tests += 1
                     elif not self.continue_on_error:
@@ -296,9 +301,9 @@ class SramTestRunner:
         return ranges
 
     def _format_ranges(self, ranges):
-        return ", ".join(
-            [f"0x{s:x}" if s == e else f"0x{s:x}-0x{e:x}" for s, e in ranges]
-        )
+        return ", ".join([
+            f"0x{s:x}" if s == e else f"0x{s:x}-0x{e:x}" for s, e in ranges
+        ])
 
     def _run_single_test(self, size, pattern_type):
         """Runs a single test case with a specific size and pattern."""
@@ -337,9 +342,14 @@ def main():
     print("SRAM Test Script Started.", flush=True)
 
     parser = argparse.ArgumentParser(description="Run SRAM test on CoralNPU.")
-    parser.add_argument("--usb-serial", help="USB serial number of the FTDI device.")
     parser.add_argument(
-        "--ftdi-port", type=int, default=1, help="Port number of the FTDI device."
+        "--usb-serial", help="USB serial number of the FTDI device."
+    )
+    parser.add_argument(
+        "--ftdi-port",
+        type=int,
+        default=1,
+        help="Port number of the FTDI device."
     )
     parser.add_argument(
         "--csr-base-addr",
@@ -358,13 +368,19 @@ def main():
         help="Run in simulation mode (connect to TCP port).",
     )
     parser.add_argument(
-        "--sim-port", type=int, help="TCP port for simulation mode (defaults to SPI_DPI_PORT or 5555)."
+        "--sim-port",
+        type=int,
+        help="TCP port for simulation mode (defaults to SPI_DPI_PORT or 5555)."
     )
     parser.add_argument(
-        "--max-size", type=int, default=256, help="Maximum test size in bytes."
+        "--max-size",
+        type=int,
+        default=256,
+        help="Maximum test size in bytes."
     )
     parser.add_argument(
-        "--single-test", help="Run only a specific test pattern (e.g., 'incrementing')."
+        "--single-test",
+        help="Run only a specific test pattern (e.g., 'incrementing')."
     )
     parser.add_argument(
         "--single-size", type=int, help="Run only a specific test size."

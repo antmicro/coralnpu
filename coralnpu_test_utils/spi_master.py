@@ -19,6 +19,7 @@ from coralnpu_test_utils.spi_constants import SPI_V2_OP_READ, SPI_V2_OP_WRITE, S
 
 
 class SPIMaster:
+
     def __init__(self, clk, csb, mosi, miso, main_clk, log):
         self.clk = clk
         self.csb = csb
@@ -26,7 +27,9 @@ class SPIMaster:
         self.miso = miso
         self.main_clk = main_clk
         self.log = log
-        self.spi_clk_driver = Clock(self.clk, 26, "ns")  # Must not divide evenly into sys clock (10ns)
+        self.spi_clk_driver = Clock(
+            self.clk, 26, "ns"
+        )  # Must not divide evenly into sys clock (10ns)
         self.clock_task = None
 
         # Initialize signal values
@@ -37,6 +40,7 @@ class SPIMaster:
     async def start_clock(self):
         if self.clock_task is None:
             self.clock_task = self.spi_clk_driver.start()
+
     async def stop_clock(self):
         if self.clock_task is not None:
             self.spi_clk_driver.stop()
@@ -49,7 +53,7 @@ class SPIMaster:
     async def _clock_byte(self, data_out):
         data_in = 0
         for i in range(8):
-            self.mosi.value = (data_out >> (7-i)) & 1
+            self.mosi.value = (data_out >> (7 - i)) & 1
             await FallingEdge(self.clk)
             data_in = (data_in << 1) | int(self.miso.value)
         return data_in
@@ -124,7 +128,7 @@ class SPIMaster:
         miso_bytes_raw = bytes(miso_bytes)
         sync_idx = miso_bytes_raw.find(b'\xfe')
         if sync_idx != -1 and sync_idx + 1 + 16 <= len(miso_bytes_raw):
-            data_bytes = miso_bytes_raw[sync_idx + 1 : sync_idx + 17]
+            data_bytes = miso_bytes_raw[sync_idx + 1:sync_idx + 17]
             return int.from_bytes(data_bytes, 'little')
 
         # Fallback: Efficient bit-level search for 0xFE token (11111110) if misalignment occurs.

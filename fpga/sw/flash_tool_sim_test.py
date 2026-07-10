@@ -85,14 +85,18 @@ def write_word(driver, addr, val):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Host tool for flash tool simulation.")
+    parser = argparse.ArgumentParser(
+        description="Host tool for flash tool simulation."
+    )
     parser.add_argument("elf", help="Path to the flash_tool ELF binary.")
     parser.add_argument("--itcm_size_kbytes", type=int, default=1024)
     parser.add_argument("--dtcm_size_kbytes", type=int, default=1024)
     parser.add_argument("--sim_timeout", type=int, default=120)
     args = parser.parse_args()
 
-    logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
+    logging.basicConfig(
+        level=logging.INFO, format="%(levelname)s: %(message)s"
+    )
 
     r = runfiles.Create()
     sim_bin_path = r.Rlocation("coralnpu_hw/fpga/Vchip_verilator_highmem")
@@ -101,7 +105,9 @@ def main():
             "coralnpu_hw/fpga/build_chip_verilator_highmem/com.google.coralnpu_fpga_chip_verilator_0.1/sim-verilator/Vchip_verilator"
         )
         if not sim_bin_path or not os.path.exists(sim_bin_path):
-            raise FileNotFoundError("Could not find simulator binary in runfiles.")
+            raise FileNotFoundError(
+                "Could not find simulator binary in runfiles."
+            )
 
     port = find_free_port()
     sim_env = os.environ.copy()
@@ -132,11 +138,15 @@ def main():
             )
         )
         threads.append(
-            threading.Thread(target=stream_reader, args=(sim_proc.stderr, "SIM_ERR"))
+            threading.Thread(
+                target=stream_reader, args=(sim_proc.stderr, "SIM_ERR")
+            )
         )
 
         uart_deadline = time.time() + args.sim_timeout + 60
-        threads.append(threading.Thread(target=tail_uart, args=(uart_deadline,)))
+        threads.append(
+            threading.Thread(target=tail_uart, args=(uart_deadline, ))
+        )
 
         for t in threads:
             t.daemon = True

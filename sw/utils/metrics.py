@@ -13,14 +13,17 @@
 # limitations under the License.
 
 
-def log_matmul_metrics(dut, test_name: str, cycles: int, num_heads: int,
-                       lhs_rows: int, rhs_cols: int, inner: int):
+def log_matmul_metrics(
+    dut, test_name: str, cycles: int, num_heads: int, lhs_rows: int,
+    rhs_cols: int, inner: int
+):
     total_macs = num_heads * lhs_rows * rhs_cols * inner
     cycles_per_mac = cycles / total_macs if total_macs > 0 else 0
     banner = (
         f"\n{'='*60}\n PERFORMANCE METRICS: {test_name}\n{'-'*60}\n"
         f"  Total Cycles   : {cycles:,}\n  Total MACs     : {total_macs:,}\n"
-        f"  Cycles / MAC   : {cycles_per_mac:.2f}\n{'='*60}")
+        f"  Cycles / MAC   : {cycles_per_mac:.2f}\n{'='*60}"
+    )
     dut._log.info(banner)
 
 
@@ -29,6 +32,6 @@ def log_vector_metrics(dut, test_name: str, cycles: int, total_elements: int):
     banner = (
         f"\n{'='*60}\n PERFORMANCE METRICS: {test_name}\n{'-'*60}\n"
         f"  Total Cycles     : {cycles:,}\n  Total Elements   : {total_elements:,}\n"
-        f"  Cycles / Element : {cycles_per_element:.3f}\n{'='*60}")
+        f"  Cycles / Element : {cycles_per_element:.3f}\n{'='*60}"
+    )
     dut._log.info(banner)
-

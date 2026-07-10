@@ -35,19 +35,17 @@ async def setup_dut(dut):
 async def test_steering_and_locking(dut):
     """Verify routing steering and ordering lock behavior (blocking requests to new device)."""
     await setup_dut(dut)
-    
-
 
     def get_master_from_source(source_id):
         return 0
 
     env = TlulVerificationEnv(dut, get_master_from_source)
-    
+
     expected_devices = {}  # source -> expected_device_idx
 
     # Dynamically hook into the scoreboard to verify steering
     orig_write_device_request = env.scoreboard.write_device_request
-    
+
     def check_routing(device_idx, txn):
         source = txn["source"]
         assert source in expected_devices, f"Scoreboard Error: Untracked source {source} at device {device_idx}"
@@ -91,28 +89,45 @@ async def test_steering_and_locking(dut):
         dut.io_dev_select_i.value = 1
         req2 = create_a_channel_req(address=0x2000, data=0x333, source=2)
         expected_devices[2] = 1
-        
+
         await host.host_put(req2)
-        await wait_host_handshake() # Handshake completes immediately!
+        await wait_host_handshake()  # Handshake completes immediately!
 
         # 4. Verify all requests are outstanding at their respective devices
         dev0_req0 = await device0.device_get_request()
         dev0_req1 = await device0.device_get_request()
         dev1_req2 = await device1.device_get_request()
-        
+
         assert dev0_req0["source"] == 0
         assert dev0_req1["source"] == 1
         assert dev1_req2["source"] == 2
 
         # 5. Respond to Request 2 on Device 1 first
-        await device1.device_respond(opcode=0, param=0, size=dev1_req2["size"], source=dev1_req2["source"])
+        await device1.device_respond(
+            opcode=0,
+            param=0,
+            size=dev1_req2["size"],
+            source=dev1_req2["source"]
+        )
         resp2 = await host.host_get_response()
-        assert resp2["source"] == 2, f"Expected response with source 2 (Device 1), got {resp2['source']}"
+        assert resp2[
+            "source"
+        ] == 2, f"Expected response with source 2 (Device 1), got {resp2['source']}"
 
         # 6. Respond to Request 0 and 1 on Device 0
-        await device0.device_respond(opcode=0, param=0, size=dev0_req0["size"], source=dev0_req0["source"])
-        await device0.device_respond(opcode=0, param=0, size=dev0_req1["size"], source=dev0_req1["source"])
-        
+        await device0.device_respond(
+            opcode=0,
+            param=0,
+            size=dev0_req0["size"],
+            source=dev0_req0["source"]
+        )
+        await device0.device_respond(
+            opcode=0,
+            param=0,
+            size=dev0_req1["size"],
+            source=dev0_req1["source"]
+        )
+
         resp0 = await host.host_get_response()
         resp1 = await host.host_get_response()
         assert resp0["source"] == 0
@@ -128,7 +143,7 @@ async def test_steering_and_locking(dut):
 async def test_error_response(dut):
     """Verify error response for out-of-bounds dev_select."""
     await setup_dut(dut)
-    
+
     def get_master_from_source(source_id):
         return 0
 
@@ -146,7 +161,7 @@ async def test_error_response(dut):
     try:
         await host.host_put(req)
         response = await host.host_get_response()
-        
+
         assert response["error"] == 1, "Expected error bit to be set"
         assert response["source"] == 42
         assert env.scoreboard.errors == 0, f"Scoreboard detected {env.scoreboard.errors} errors"
@@ -158,17 +173,17 @@ async def test_error_response(dut):
 async def test_random_backpressure(dut):
     """Verify correct routing and lock recovery under randomized backpressure."""
     await setup_dut(dut)
-    
+
     def get_master_from_source(source_id):
         return 0
 
     env = TlulVerificationEnv(dut, get_master_from_source)
-    
+
     expected_devices = {}
 
     # Hook into scoreboard
     orig_write_device_request = env.scoreboard.write_device_request
-    
+
     def check_routing(device_idx, txn):
         source = txn["source"]
         assert source in expected_devices, f"Scoreboard Error: Untracked source {source} at device {device_idx}"
@@ -185,9 +200,10 @@ async def test_random_backpressure(dut):
     env.backpressure_enabled = True
     env.host_bp_prob = 0.3
     env.device_bp_prob = 0.3
-    
+
     def bp_condition(cycle_count):
         return 20 <= cycle_count <= 150
+
     env.bp_condition_cb = bp_condition
 
     N = env.N
@@ -200,39 +216,43 @@ async def test_random_backpressure(dut):
         while True:
             req = await device.device_get_request()
             await ClockCycles(dut.clock, random.randint(0, 4))
-            await device.device_respond(opcode=0, param=0, size=req["size"], source=req["source"])
-            
-    responder_tasks = [cocotb.start_soon(device_responder(j)) for j in range(N)]
+            await device.device_respond(
+                opcode=0, param=0, size=req["size"], source=req["source"]
+            )
+
+    responder_tasks = [
+        cocotb.start_soon(device_responder(j)) for j in range(N)
+    ]
 
     try:
         for i in range(num_txns):
             dev_select = random.randint(0, N - 1)
             dut.io_dev_select_i.value = dev_select
-            
+
             source = i
             expected_devices[source] = dev_select
-            
+
             req = create_a_channel_req(
                 address=0x1000 + i * 4,
                 data=0x11223344 + i,
                 mask=0xF,
                 source=source
             )
-            
+
             await host.host_put(req)
-            
+
             # Wait for handshake to propagate to the device
             cycles = 0
             while source in expected_devices and cycles < 100:
                 await ClockCycles(dut.clock, 1)
                 cycles += 1
-                
+
             assert source not in expected_devices, f"Transaction {source} timed out under backpressure"
-            
+
             # Consume response
             resp = await host.host_get_response()
             assert resp["source"] == source
-            
+
         # Wait for all remaining responses to propagate
         await ClockCycles(dut.clock, 20)
         assert env.scoreboard.errors == 0, f"Scoreboard detected {env.scoreboard.errors} errors"

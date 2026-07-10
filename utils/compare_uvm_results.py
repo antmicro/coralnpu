@@ -49,7 +49,8 @@ def read_results(results_dir: str) -> Dict[str, Tuple[str, str, str]]:
                 data[row['Target']] = (row['Status'], row['Reason'], log_path)
             except KeyError as e:
                 logging.warning(
-                    f"Warning: Skipping malformed row in {csv_path}: {e}")
+                    f"Warning: Skipping malformed row in {csv_path}: {e}"
+                )
     return data
 
 
@@ -117,9 +118,11 @@ def main():
     # Configure logging
     logging.basicConfig(level=logging.INFO, format='%(message)s')
     parser = argparse.ArgumentParser(
-        description="Compare two UVM regression output directories.")
-    parser.add_argument("baseline",
-                        help="Path to baseline regression directory")
+        description="Compare two UVM regression output directories."
+    )
+    parser.add_argument(
+        "baseline", help="Path to baseline regression directory"
+    )
     parser.add_argument("new", help="Path to new regression directory")
     args = parser.parse_args()
     compare(args.baseline, args.new)

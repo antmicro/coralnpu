@@ -18,6 +18,7 @@ import argparse
 from coralnpu_test_utils.core_mini_axi_interface import CoreMiniAxiInterface
 from bazel_tools.tools.python.runfiles import runfiles
 
+
 @cocotb.test()
 async def core_mini_axi_tutorial(dut):
     """Testbench to run your CoralNPU program."""
@@ -29,21 +30,23 @@ async def core_mini_axi_tutorial(dut):
     r = runfiles.Create()
 
     #Elf file is generated from bazel build //examples:coralnpu_v2_hello_world_add_floats
-    elf_path = r.Rlocation("coralnpu_hw/examples/coralnpu_v2_hello_world_add_floats.elf")
+    elf_path = r.Rlocation(
+        "coralnpu_hw/examples/coralnpu_v2_hello_world_add_floats.elf"
+    )
     if not elf_path:
-      raise ValueError("elf_path must consist a valid path ")
+        raise ValueError("elf_path must consist a valid path ")
     #Load your program into ITCM with "load_elf"
     with open(elf_path, "rb") as f:
-      entry_point = await core_mini_axi.load_elf(f)
+        entry_point = await core_mini_axi.load_elf(f)
 
     #Write your program inputs
     with open(elf_path, "rb") as f:
-      inputs1_addr = core_mini_axi.lookup_symbol(f, "input1")
-      inputs2_addr = core_mini_axi.lookup_symbol(f, "input2")
-      outputs_addr = core_mini_axi.lookup_symbol(f, "output")
+        inputs1_addr = core_mini_axi.lookup_symbol(f, "input1")
+        inputs2_addr = core_mini_axi.lookup_symbol(f, "input2")
+        outputs_addr = core_mini_axi.lookup_symbol(f, "output")
 
     # this example is passing inputs from dctm instead of defining in memory.
-    input1_data = np.arange(1,9, dtype=np.float32)
+    input1_data = np.arange(1, 9, dtype=np.float32)
     input2_data = 0.213 * np.ones(8, dtype=np.float32)
 
     await core_mini_axi.write(inputs1_addr, input1_data)
@@ -64,9 +67,10 @@ async def core_mini_axi_tutorial(dut):
     rinput2 = (await core_mini_axi.read(inputs2_addr, 4 * 8)).view(np.float32)
     #check for correctness
     for idx in range(len(routputs)):
-      if expected[idx] == routputs[idx]:
-        continue
-      else:
-        raise ValueError(f"expected value at {idx} doesn't with result {expected[idx]} vs {routputs[idx]}")
+        if expected[idx] == routputs[idx]:
+            continue
+        else:
+            raise ValueError(
+                f"expected value at {idx} doesn't with result {expected[idx]} vs {routputs[idx]}"
+            )
     print(f"Outputs from program {routputs}")
-

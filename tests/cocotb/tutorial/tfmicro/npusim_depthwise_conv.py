@@ -8,7 +8,8 @@ def tolerate(target: int, variance=0.2) -> int:
 
 
 class MpactDepthwiseConvTest:
-    def __init__(self, in_d, dm = 1, stride = 1, out_h = 4, out_w = 4):
+
+    def __init__(self, in_d, dm=1, stride=1, out_h=4, out_w=4):
         self.dm = dm
         self.stride = stride
         out_d = in_d * dm
@@ -22,14 +23,14 @@ class MpactDepthwiseConvTest:
 
         r = runfiles.Create()
         self.elf_file = r.Rlocation(
-            'coralnpu_hw/tests/cocotb/tutorial/tfmicro/depthwise_conv_test.elf')
+            'coralnpu_hw/tests/cocotb/tutorial/tfmicro/depthwise_conv_test.elf'
+        )
 
     def load_and_populate_input(self):
 
         self.npu_sim = CoralNPUV2Simulator(highmem_ld=True)
         self.entry_point, self.symbol_map = self.npu_sim.get_elf_entry_and_symbol(
-            self.elf_file,
-            [
+            self.elf_file, [
                 'impl',
                 'run_ref',
                 'run_optimized',
@@ -47,30 +48,51 @@ class MpactDepthwiseConvTest:
         )
         self.npu_sim.load_program(self.elf_file)
         rng = np.random.default_rng()
-        self.filter_data = rng.integers(
-            -128, 128, self.f_shape, dtype=np.int8)
+        self.filter_data = rng.integers(-128, 128, self.f_shape, dtype=np.int8)
         filter_data_flat = self.filter_data.flatten()
         bias_data = rng.integers(
-            -100000, 100000, self.out_shape[3], dtype=np.int32)
-        input_data = rng.integers(-128, 128, self.in_shape, dtype=np.int8).flatten()
-        self.npu_sim.write_word(self.symbol_map['stride'], np.uint32(self.stride))
+            -100000, 100000, self.out_shape[3], dtype=np.int32
+        )
+        input_data = rng.integers(
+            -128, 128, self.in_shape, dtype=np.int8
+        ).flatten()
+        self.npu_sim.write_word(
+            self.symbol_map['stride'], np.uint32(self.stride)
+        )
         self.npu_sim.write_word(self.symbol_map['dm'], np.uint32(self.dm))
-        self.npu_sim.write_memory(self.symbol_map['filter_shape'], self.f_shape)
-        self.npu_sim.write_memory(self.symbol_map['filter_data'], filter_data_flat)
-        self.npu_sim.write_memory(self.symbol_map['bias_shape'], self.bias_shape)
+        self.npu_sim.write_memory(
+            self.symbol_map['filter_shape'], self.f_shape
+        )
+        self.npu_sim.write_memory(
+            self.symbol_map['filter_data'], filter_data_flat
+        )
+        self.npu_sim.write_memory(
+            self.symbol_map['bias_shape'], self.bias_shape
+        )
         self.npu_sim.write_memory(self.symbol_map['bias_data'], bias_data)
-        self.npu_sim.write_memory(self.symbol_map['input_shape'], self.in_shape)
+        self.npu_sim.write_memory(
+            self.symbol_map['input_shape'], self.in_shape
+        )
         self.npu_sim.write_memory(self.symbol_map['input_data'], input_data)
-        self.npu_sim.write_memory(self.symbol_map['output_shape'], self.out_shape)
+        self.npu_sim.write_memory(
+            self.symbol_map['output_shape'], self.out_shape
+        )
 
-    def run(self,fun_ptr):
+    def run(self, fun_ptr):
         self.npu_sim.write_register('pc', self.entry_point)
-        self.npu_sim.write_ptr(self.symbol_map['impl'], self.symbol_map[fun_ptr])
-        self.npu_sim.write_memory(self.symbol_map['output_data'], np.zeros([self.out_size], dtype=np.int8))
+        self.npu_sim.write_ptr(
+            self.symbol_map['impl'], self.symbol_map[fun_ptr]
+        )
+        self.npu_sim.write_memory(
+            self.symbol_map['output_data'],
+            np.zeros([self.out_size], dtype=np.int8)
+        )
         self.npu_sim.run()
         self.npu_sim.wait()
         cycles = self.npu_sim.get_cycle_count()
-        outputs = self.npu_sim.read_memory(self.symbol_map['output_data'], self.out_size).view(np.int8)
+        outputs = self.npu_sim.read_memory(
+            self.symbol_map['output_data'], self.out_size
+        ).view(np.int8)
         return cycles, outputs
 
     def test(self, ref_target, opt_target):
@@ -81,6 +103,7 @@ class MpactDepthwiseConvTest:
         assert (opt_outputs == ref_outputs).all()
         assert opt_cycles < tolerate(opt_target)
         assert ref_cycles < tolerate(ref_target)
+
 
 def run_tests():
 
@@ -111,5 +134,5 @@ def run_tests():
     t.test(ref_target=177_961, opt_target=9_586)
 
 
-if __name__=="__main__":
+if __name__ == "__main__":
     run_tests()

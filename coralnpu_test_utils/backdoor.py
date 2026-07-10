@@ -21,7 +21,9 @@ try:
     lib = ctypes.CDLL(None)
     sram_backdoor_load = lib.sram_backdoor_load_c
     # Explicitly set argument types for correctness
-    sram_backdoor_load.argtypes = [ctypes.c_uint64, ctypes.c_void_p, ctypes.c_size_t]
+    sram_backdoor_load.argtypes = [
+        ctypes.c_uint64, ctypes.c_void_p, ctypes.c_size_t
+    ]
     sram_backdoor_load.restype = ctypes.c_bool
 except (AttributeError, Exception):
     # This might happen if the test is run on a simulator that doesn't have the DPI linked,
@@ -48,8 +50,8 @@ def backdoor_load(addr, data):
     data_bytes = bytes(data)
     # Using cast to void_p to ensure it's handled as a pointer
     if not sram_backdoor_load(
-        ctypes.c_uint64(addr),
-        ctypes.cast(ctypes.c_char_p(data_bytes), ctypes.c_void_p),
-        ctypes.c_size_t(len(data_bytes)),
+            ctypes.c_uint64(addr),
+            ctypes.cast(ctypes.c_char_p(data_bytes), ctypes.c_void_p),
+            ctypes.c_size_t(len(data_bytes)),
     ):
         raise RuntimeError(f"Backdoor load failed for address 0x{addr:x}")

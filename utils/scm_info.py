@@ -17,7 +17,9 @@ import sys
 from pathlib import Path
 from typing import Union
 
+
 class VersionInformation():
+
     def __init__(self, path: str):
         self.version_stamp = {}
         if path is None:
@@ -30,13 +32,19 @@ class VersionInformation():
         except ValueError:
             raise SystemExit(sys.exc_info()[1])
 
-    def scm_revision(self, default: Union[str, None] = None) -> Union[str, None]:
+    def scm_revision(self,
+                     default: Union[str, None] = None) -> Union[str, None]:
         return self.version_stamp.get('CORALNPU_BUILD_GIT_VERSION', default)
+
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--outfile', '-o', required=True, type=Path, help='Output file')
-    parser.add_argument('--infile', '-i', required=True, type=Path, help='Input file')
+    parser.add_argument(
+        '--outfile', '-o', required=True, type=Path, help='Output file'
+    )
+    parser.add_argument(
+        '--infile', '-i', required=True, type=Path, help='Input file'
+    )
     args = parser.parse_args()
 
     version_info = VersionInformation(args.infile)
@@ -52,6 +60,7 @@ class ScmInfo {{
     args.outfile.parent.mkdir(parents=True, exist_ok=True)
     with args.outfile.open(mode='w', encoding='utf-8') as fout:
         fout.write(tpl)
+
 
 if __name__ == '__main__':
     main()

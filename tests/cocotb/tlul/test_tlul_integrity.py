@@ -20,13 +20,9 @@ from coralnpu_test_utils.TileLinkULInterface import TileLinkULInterface, create_
 from coralnpu_test_utils.secded_golden import get_cmd_intg, get_data_intg, get_rsp_intg
 
 
-def create_d_channel_rsp(opcode,
-                         data,
-                         size,
-                         source,
-                         param=0,
-                         sink=0,
-                         error=False):
+def create_d_channel_rsp(
+    opcode, data, size, source, param=0, sink=0, error=False
+):
     """Creates a standard TileLink-UL D-channel response dictionary."""
     return {
         "opcode": opcode,
@@ -60,10 +56,12 @@ async def test_request_integrity_gen(dut):
     await setup_dut(dut)
 
     # Drive the input A-channel
-    req = create_a_channel_req(address=0x1000,
-                               data=0x112233445566778899aabbccddeeff00,
-                               mask=0xFFFF,
-                               width=128)
+    req = create_a_channel_req(
+        address=0x1000,
+        data=0x112233445566778899aabbccddeeff00,
+        mask=0xFFFF,
+        width=128
+    )
     dut.io_req_gen_a_i_valid.value = 1
     dut.io_req_gen_a_i_bits_opcode.value = req["opcode"]
     dut.io_req_gen_a_i_bits_param.value = req["param"]
@@ -73,8 +71,9 @@ async def test_request_integrity_gen(dut):
     dut.io_req_gen_a_i_bits_mask.value = req["mask"]
     dut.io_req_gen_a_i_bits_data.value = req["data"]
     dut.io_req_gen_a_i_bits_user_cmd_intg.value = get_cmd_intg(req)
-    dut.io_req_gen_a_i_bits_user_data_intg.value = get_data_intg(req["data"],
-                                                                   width=128)
+    dut.io_req_gen_a_i_bits_user_data_intg.value = get_data_intg(
+        req["data"], width=128
+    )
     dut.io_req_gen_a_i_bits_user_rsvd.value = 0
     dut.io_req_gen_a_i_bits_user_instr_type.value = 0
 
@@ -92,17 +91,20 @@ async def test_request_integrity_gen(dut):
 
     assert dut.io_req_gen_a_o_bits_user_cmd_intg.value == get_cmd_intg(req)
     assert dut.io_req_gen_a_o_bits_user_data_intg.value == get_data_intg(
-        req["data"], width=128)
+        req["data"], width=128
+    )
 
 
 @cocotb.test()
 async def test_request_integrity_check(dut):
     """Test that the RequestIntegrityCheck module correctly identifies faults."""
     await setup_dut(dut)
-    req = create_a_channel_req(address=0x1000,
-                               data=0x112233445566778899aabbccddeeff00,
-                               mask=0xFFFF,
-                               width=128)
+    req = create_a_channel_req(
+        address=0x1000,
+        data=0x112233445566778899aabbccddeeff00,
+        mask=0xFFFF,
+        width=128
+    )
 
     # --- Transaction 1: Correct integrity ---
     dut.io_req_check_a_i_valid.value = 1
@@ -114,8 +116,9 @@ async def test_request_integrity_check(dut):
     dut.io_req_check_a_i_bits_mask.value = req["mask"]
     dut.io_req_check_a_i_bits_data.value = req["data"]
     dut.io_req_check_a_i_bits_user_cmd_intg.value = get_cmd_intg(req)
-    dut.io_req_check_a_i_bits_user_data_intg.value = get_data_intg(req["data"],
-                                                                   width=128)
+    dut.io_req_check_a_i_bits_user_data_intg.value = get_data_intg(
+        req["data"], width=128
+    )
     dut.io_req_check_a_i_bits_user_rsvd.value = 0
     dut.io_req_check_a_i_bits_user_instr_type.value = 0
 
@@ -155,7 +158,8 @@ async def test_request_integrity_check(dut):
     dut.io_req_check_a_i_valid.value = 1
     dut.io_req_check_a_i_bits_data.value = req["data"]
     dut.io_req_check_a_i_bits_user_cmd_intg.value = get_cmd_intg(
-        req)  # Restore cmd_intg
+        req
+    )  # Restore cmd_intg
     correct_data_intg = get_data_intg(req["data"], width=128)
     dut.io_req_check_a_i_bits_user_data_intg.value = ~correct_data_intg & 0x7F
 
@@ -179,10 +183,9 @@ async def test_response_integrity_gen(dut):
     await setup_dut(dut)
 
     # Drive the input D-channel
-    rsp = create_d_channel_rsp(opcode=1,
-                               data=0x112233445566778899aabbccddeeff00,
-                               size=4,
-                               source=1)
+    rsp = create_d_channel_rsp(
+        opcode=1, data=0x112233445566778899aabbccddeeff00, size=4, source=1
+    )
     dut.io_rsp_gen_d_i_valid.value = 1
     dut.io_rsp_gen_d_i_bits_opcode.value = rsp["opcode"]
     dut.io_rsp_gen_d_i_bits_param.value = rsp["param"]
@@ -204,17 +207,17 @@ async def test_response_integrity_gen(dut):
 
     assert dut.io_rsp_gen_d_o_bits_user_rsp_intg.value == get_rsp_intg(rsp)
     assert dut.io_rsp_gen_d_o_bits_user_data_intg.value == get_data_intg(
-        rsp["data"], width=128)
+        rsp["data"], width=128
+    )
 
 
 @cocotb.test()
 async def test_response_integrity_check(dut):
     """Test that the ResponseIntegrityCheck module correctly identifies faults."""
     await setup_dut(dut)
-    rsp = create_d_channel_rsp(opcode=1,
-                               data=0x112233445566778899aabbccddeeff00,
-                               size=4,
-                               source=1)
+    rsp = create_d_channel_rsp(
+        opcode=1, data=0x112233445566778899aabbccddeeff00, size=4, source=1
+    )
 
     # --- Transaction 1: Correct integrity ---
     dut.io_rsp_check_d_i_valid.value = 1
@@ -226,8 +229,9 @@ async def test_response_integrity_check(dut):
     dut.io_rsp_check_d_i_bits_data.value = rsp["data"]
     dut.io_rsp_check_d_i_bits_error.value = rsp["error"]
     dut.io_rsp_check_d_i_bits_user_rsp_intg.value = get_rsp_intg(rsp)
-    dut.io_rsp_check_d_i_bits_user_data_intg.value = get_data_intg(rsp["data"],
-                                                                   width=128)
+    dut.io_rsp_check_d_i_bits_user_data_intg.value = get_data_intg(
+        rsp["data"], width=128
+    )
 
     for _ in range(10):
         if dut.io_rsp_check_d_i_ready.value:
@@ -263,7 +267,8 @@ async def test_response_integrity_check(dut):
     dut.io_rsp_check_d_i_valid.value = 1
     dut.io_rsp_check_d_i_bits_data.value = rsp["data"]
     dut.io_rsp_check_d_i_bits_user_rsp_intg.value = get_rsp_intg(
-        rsp)  # Restore rsp_intg
+        rsp
+    )  # Restore rsp_intg
     correct_data_intg = get_data_intg(rsp["data"], width=128)
     dut.io_rsp_check_d_i_bits_user_data_intg.value = ~correct_data_intg & 0x7F
 

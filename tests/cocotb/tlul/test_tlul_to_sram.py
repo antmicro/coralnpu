@@ -20,7 +20,9 @@ import numpy as np
 
 from coralnpu_test_utils.TileLinkULInterface import TileLinkULInterface, create_a_channel_req
 
+
 class MockSram:
+
     def __init__(self, dut, word_width=128):
         self.dut = dut
         self.word_width = word_width
@@ -45,8 +47,12 @@ class MockSram:
 
             if enable:
                 if write:
-                    wdata_bytes = np.array([(wdata >> (i * 8)) & 0xff for i in range(16)], dtype=np.uint8)
-                    mask_bytes = np.array([bool((wmask >> i) & 1) for i in range(16)])
+                    wdata_bytes = np.array([(wdata >> (i * 8)) & 0xff
+                                            for i in range(16)],
+                                           dtype=np.uint8)
+                    mask_bytes = np.array([
+                        bool((wmask >> i) & 1) for i in range(16)
+                    ])
                     self.mem[addr, mask_bytes] = wdata_bytes[mask_bytes]
                     resp_data = 0
                 else:
@@ -54,10 +60,7 @@ class MockSram:
                     words64 = bytes_val.view(np.uint64)
                     resp_data = int(words64[0]) | (int(words64[1]) << 64)
 
-                self.pending_resp = {
-                    "write": write,
-                    "data": resp_data
-                }
+                self.pending_resp = {"write": write, "data": resp_data}
             else:
                 self.pending_resp = None
 
@@ -82,7 +85,9 @@ async def setup_dut(dut):
     await RisingEdge(dut.clock)
 
 
-def generate_random_transactions(num_txns, read_ratio, addr_max, source_width, width=128):
+def generate_random_transactions(
+    num_txns, read_ratio, addr_max, source_width, width=128
+):
     txns = []
     expected_responses = []
     model_mem = {}
@@ -94,7 +99,9 @@ def generate_random_transactions(num_txns, read_ratio, addr_max, source_width, w
         source = random.randint(0, (1 << source_width) - 1)
 
         if is_read:
-            txn = create_a_channel_req(address=addr, source=source, width=width, is_read=True)
+            txn = create_a_channel_req(
+                address=addr, source=source, width=width, is_read=True
+            )
             txns.append(txn)
 
             word_addr = addr // 16
@@ -111,7 +118,14 @@ def generate_random_transactions(num_txns, read_ratio, addr_max, source_width, w
         else:
             data = random.getrandbits(width)
             mask = 0xffff
-            txn = create_a_channel_req(address=addr, data=data, mask=mask, source=source, width=width, is_read=False)
+            txn = create_a_channel_req(
+                address=addr,
+                data=data,
+                mask=mask,
+                source=source,
+                width=width,
+                is_read=False
+            )
             txns.append(txn)
 
             word_addr = addr // 16
@@ -128,8 +142,11 @@ def generate_random_transactions(num_txns, read_ratio, addr_max, source_width, w
 
     return txns, expected_responses
 
+
 async def run_tr_test(dut, num_txns, read_ratio, use_backpressure):
-    host_if = TileLinkULInterface(dut, host_if_name="io_tl", width=128, backpressure=use_backpressure)
+    host_if = TileLinkULInterface(
+        dut, host_if_name="io_tl", width=128, backpressure=use_backpressure
+    )
     await setup_dut(dut)
     sram = MockSram(dut, word_width=128)
 
@@ -138,8 +155,9 @@ async def run_tr_test(dut, num_txns, read_ratio, use_backpressure):
     addr_width = len(dut.io_sram_addr)
     addr_max = ((1 << addr_width) - 1) * 16
     source_width = len(dut.io_tl_a_bits_source)
-    txns, expected_resps = generate_random_transactions(num_txns, read_ratio, addr_max, source_width)
-
+    txns, expected_resps = generate_random_transactions(
+        num_txns, read_ratio, addr_max, source_width
+    )
 
     async def send_txns():
         for txn in txns:
@@ -151,25 +169,44 @@ async def run_tr_test(dut, num_txns, read_ratio, use_backpressure):
         for i, expected in enumerate(expected_resps):
             resp = await host_if.host_get_response()
 
-            assert resp["opcode"] == expected["opcode"], f"Txn {i}: Opcode mismatch. Expected {expected['opcode']}, got {resp['opcode']}"
-            assert resp["size"] == expected["size"], f"Txn {i}: Size mismatch. Expected {expected['size']}, got {resp['size']}"
-            assert resp["source"] == expected["source"], f"Txn {i}: Source mismatch. Expected {expected['source']}, got {resp['source']}"
-            assert resp["error"] == expected["error"], f"Txn {i}: Error mismatch. Expected {expected['error']}, got {resp['error']}"
+            assert resp["opcode"] == expected[
+                "opcode"
+            ], f"Txn {i}: Opcode mismatch. Expected {expected['opcode']}, got {resp['opcode']}"
+            assert resp["size"] == expected[
+                "size"
+            ], f"Txn {i}: Size mismatch. Expected {expected['size']}, got {resp['size']}"
+            assert resp["source"] == expected[
+                "source"
+            ], f"Txn {i}: Source mismatch. Expected {expected['source']}, got {resp['source']}"
+            assert resp["error"] == expected[
+                "error"
+            ], f"Txn {i}: Error mismatch. Expected {expected['error']}, got {resp['error']}"
             if expected["opcode"] == 1:
-                assert resp["data"] == expected["data"], f"Txn {i}: Data mismatch.\nExpected: {hex(expected['data'])}\nGot:      {hex(resp['data'])}"
+                assert resp["data"] == expected[
+                    "data"
+                ], f"Txn {i}: Data mismatch.\nExpected: {hex(expected['data'])}\nGot:      {hex(resp['data'])}"
 
-    await Combine(cocotb.start_soon(send_txns()), cocotb.start_soon(recv_resps()))
+    await Combine(
+        cocotb.start_soon(send_txns()), cocotb.start_soon(recv_resps())
+    )
+
 
 @cocotb.test()
 async def test_tlul_to_sram_crv_balanced(dut):
     """CRV with balanced read/write and no backpressure."""
-    await run_tr_test(dut, num_txns=100, read_ratio=0.5, use_backpressure=False)
+    await run_tr_test(
+        dut, num_txns=100, read_ratio=0.5, use_backpressure=False
+    )
+
 
 @cocotb.test()
 async def test_tlul_to_sram_crv_random_backpressure(dut):
     """CRV with random workload ratio and random backpressure."""
     read_ratio = random.random()  # Random mix of reads and writes (0.0 to 1.0)
-    await run_tr_test(dut, num_txns=100, read_ratio=read_ratio, use_backpressure=True)
+    await run_tr_test(
+        dut, num_txns=100, read_ratio=read_ratio, use_backpressure=True
+    )
+
 
 @cocotb.test()
 async def test_sram_read_write(dut):
@@ -190,19 +227,31 @@ async def test_sram_read_write(dut):
         source = random.randint(0, (1 << source_width) - 1)
 
         # Write
-        write_txn = create_a_channel_req(address=addr, data=data, mask=0xffff, source=source, width=128, is_read=False)
+        write_txn = create_a_channel_req(
+            address=addr,
+            data=data,
+            mask=0xffff,
+            source=source,
+            width=128,
+            is_read=False
+        )
         await host_if.host_put(write_txn)
         write_resp = await host_if.host_get_response()
         assert write_resp["opcode"] == 0
         assert write_resp["source"] == source
 
         # Read
-        read_txn = create_a_channel_req(address=addr, source=source, width=128, is_read=True)
+        read_txn = create_a_channel_req(
+            address=addr, source=source, width=128, is_read=True
+        )
         await host_if.host_put(read_txn)
         read_resp = await host_if.host_get_response()
         assert read_resp["opcode"] == 1
         assert read_resp["source"] == source
-        assert read_resp["data"] == data, f"Mismatch at {hex(addr)}: expected {hex(data)}, got {hex(read_resp['data'])}"
+        assert read_resp[
+            "data"
+        ] == data, f"Mismatch at {hex(addr)}: expected {hex(data)}, got {hex(read_resp['data'])}"
+
 
 @cocotb.test()
 async def test_sram_masking(dut):
@@ -223,14 +272,28 @@ async def test_sram_masking(dut):
         source = random.randint(0, (1 << source_width) - 1)
 
         # 1. Write initial data (full mask)
-        write_txn = create_a_channel_req(address=addr, data=initial_data, mask=0xffff, source=source, width=128, is_read=False)
+        write_txn = create_a_channel_req(
+            address=addr,
+            data=initial_data,
+            mask=0xffff,
+            source=source,
+            width=128,
+            is_read=False
+        )
         await host_if.host_put(write_txn)
         await host_if.host_get_response()
 
         # 2. Write partial data with random mask
         mask = random.randint(1, 0xfffe)
         partial_data = random.getrandbits(128)
-        write_partial_txn = create_a_channel_req(address=addr, data=partial_data, mask=mask, source=source, width=128, is_read=False)
+        write_partial_txn = create_a_channel_req(
+            address=addr,
+            data=partial_data,
+            mask=mask,
+            source=source,
+            width=128,
+            is_read=False
+        )
         await host_if.host_put(write_partial_txn)
         await host_if.host_get_response()
 
@@ -238,15 +301,24 @@ async def test_sram_masking(dut):
         expected_data = 0
         for byte_idx in range(16):
             if (mask >> byte_idx) & 1:
-                expected_data |= ((partial_data >> (byte_idx * 8)) & 0xff) << (byte_idx * 8)
+                expected_data |= ((partial_data >> (byte_idx * 8)) & 0xff) << (
+                    byte_idx * 8
+                )
             else:
-                expected_data |= ((initial_data >> (byte_idx * 8)) & 0xff) << (byte_idx * 8)
+                expected_data |= ((initial_data >> (byte_idx * 8)) & 0xff) << (
+                    byte_idx * 8
+                )
 
         # 3. Read back and verify
-        read_txn = create_a_channel_req(address=addr, source=source, width=128, is_read=True)
+        read_txn = create_a_channel_req(
+            address=addr, source=source, width=128, is_read=True
+        )
         await host_if.host_put(read_txn)
         read_resp = await host_if.host_get_response()
-        assert read_resp["data"] == expected_data, f"Masking mismatch at {hex(addr)} with mask {hex(mask)}:\nExpected: {hex(expected_data)}\nGot:      {hex(read_resp['data'])}"
+        assert read_resp[
+            "data"
+        ] == expected_data, f"Masking mismatch at {hex(addr)} with mask {hex(mask)}:\nExpected: {hex(expected_data)}\nGot:      {hex(read_resp['data'])}"
+
 
 @cocotb.test()
 async def test_sram_pipelining(dut):
@@ -268,7 +340,14 @@ async def test_sram_pipelining(dut):
         data = random.getrandbits(128)
         datas.append(data)
         source = i % (1 << source_width)
-        txn = create_a_channel_req(address=addr, data=data, mask=0xffff, source=source, width=128, is_read=False)
+        txn = create_a_channel_req(
+            address=addr,
+            data=data,
+            mask=0xffff,
+            source=source,
+            width=128,
+            is_read=False
+        )
         write_txns.append(txn)
         write_expected.append({"opcode": 0, "source": source})
 
@@ -286,7 +365,9 @@ async def test_sram_pipelining(dut):
     for i in range(pipeline_depth):
         addr = i * 16
         source = (i + 10) % (1 << source_width)
-        txn = create_a_channel_req(address=addr, source=source, width=128, is_read=True)
+        txn = create_a_channel_req(
+            address=addr, source=source, width=128, is_read=True
+        )
         read_txns.append(txn)
         read_expected.append({"opcode": 1, "source": source, "data": datas[i]})
 

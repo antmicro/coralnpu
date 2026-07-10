@@ -27,23 +27,28 @@ async def core_mini_rvv_residual_add_test(dut):
     r = runfiles.Create()
 
     # We need highmem because Gemma 3 270M prefill shape (256x640) takes ~1.9MB across 3 tensors
-    fixture = await Fixture.Create(dut,
-                                   highmem=True,
-                                   ext_mem_base_addr=0x80000000,
-                                   ext_mem_size=32 * 1024 * 1024)
+    fixture = await Fixture.Create(
+        dut,
+        highmem=True,
+        ext_mem_base_addr=0x80000000,
+        ext_mem_size=32 * 1024 * 1024
+    )
 
     elf_name = "rvv_residual_add.elf"
     elf_path = r.Rlocation(
-        f"coralnpu_hw/tests/cocotb/rvv/ml_ops/gemma_kernels/{elf_name}")
+        f"coralnpu_hw/tests/cocotb/rvv/ml_ops/gemma_kernels/{elf_name}"
+    )
 
     if not elf_path or not os.path.exists(elf_path):
         dut._log.info(
-            f"Skipping test because ELF not found in sandbox: {elf_name}")
+            f"Skipping test because ELF not found in sandbox: {elf_name}"
+        )
         return
 
     dut._log.info(f"Loading ELF: {elf_path}")
     await fixture.load_elf_and_lookup_symbols(
-        elf_path, ["A", "B", "Y", "active_elements", "cycle_count"])
+        elf_path, ["A", "B", "Y", "active_elements", "cycle_count"]
+    )
 
     await fixture.core_mini_axi.reset()
 
@@ -65,8 +70,9 @@ async def core_mini_rvv_residual_add_test(dut):
 
         expected_output = np.add(A_data, B_data)
 
-        await fixture.write('active_elements',
-                            np.array([total_elements], dtype=np.uint32))
+        await fixture.write(
+            'active_elements', np.array([total_elements], dtype=np.uint32)
+        )
         await fixture.write('A', A_data.flatten())
         await fixture.write('B', B_data.flatten())
 
@@ -79,12 +85,14 @@ async def core_mini_rvv_residual_add_test(dut):
 
         output_size_bytes = total_elements * 4
         actual_output = (await fixture.read('Y', output_size_bytes)).view(
-            dtype=np.float32).reshape(token_count, hidden_size)
+            dtype=np.float32
+        ).reshape(token_count, hidden_size)
 
-        np.testing.assert_allclose(expected_output,
-                                   actual_output,
-                                   rtol=1e-5,
-                                   atol=1e-5)
+        np.testing.assert_allclose(
+            expected_output, actual_output, rtol=1e-5, atol=1e-5
+        )
 
-        log_vector_metrics(dut, f"Residual Add Shape: [{token_count}, {hidden_size}]",
-                           npu_cycles, total_elements)
+        log_vector_metrics(
+            dut, f"Residual Add Shape: [{token_count}, {hidden_size}]",
+            npu_cycles, total_elements
+        )

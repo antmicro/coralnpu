@@ -77,8 +77,9 @@ def main():
 
         print(f"Updating testcases for {suite_name}...")
 
-        update_script_path = os.path.join(workspace_root, "utils",
-                                          "update_cocotb_tests.py")
+        update_script_path = os.path.join(
+            workspace_root, "utils", "update_cocotb_tests.py"
+        )
         update_command = [
             'python3',
             update_script_path,

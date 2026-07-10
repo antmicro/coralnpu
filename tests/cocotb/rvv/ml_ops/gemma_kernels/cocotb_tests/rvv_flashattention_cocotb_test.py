@@ -22,8 +22,9 @@ from coralnpu_test_utils.sim_test_fixture import Fixture
 from sw.utils.metrics import log_matmul_metrics
 
 
-def calculate_cosine_similarity(actual: np.ndarray,
-                                expected: np.ndarray) -> float:
+def calculate_cosine_similarity(
+    actual: np.ndarray, expected: np.ndarray
+) -> float:
     dot_products = np.sum(actual * expected, axis=-1)
     norm_actual = np.linalg.norm(actual, axis=-1)
     norm_expected = np.linalg.norm(expected, axis=-1)
@@ -31,8 +32,9 @@ def calculate_cosine_similarity(actual: np.ndarray,
     return float(np.mean(similarities))
 
 
-def load_real_attention_data(num_heads: int, seq_len: int, d_model: int, dut,
-                             r):
+def load_real_attention_data(
+    num_heads: int, seq_len: int, d_model: int, dut, r
+):
     q_path = r.Rlocation(
         "coralnpu_hw/tests/cocotb/rvv/ml_ops/gemma_kernels/test_data/gemma_q.npy"
     )
@@ -43,8 +45,8 @@ def load_real_attention_data(num_heads: int, seq_len: int, d_model: int, dut,
         "coralnpu_hw/tests/cocotb/rvv/ml_ops/gemma_kernels/test_data/gemma_v.npy"
     )
 
-    if (q_path and os.path.exists(q_path) and os.path.exists(k_path) and
-            os.path.exists(v_path)):
+    if (q_path and os.path.exists(q_path) and os.path.exists(k_path)
+            and os.path.exists(v_path)):
         dut._log.info(
             "SUCCESS: Real Gemma tensors found! Calculating UNMASKED Multi-Head Golden Model..."
         )
@@ -62,7 +64,8 @@ def load_real_attention_data(num_heads: int, seq_len: int, d_model: int, dut,
         v_data = safe_load_and_reshape(v_path)
 
         # Golden Model Math
-        scores = np.matmul(q_data, k_data.transpose(0, 2, 1)) / np.sqrt(d_model)
+        scores = np.matmul(q_data, k_data.transpose(0, 2,
+                                                    1)) / np.sqrt(d_model)
         m = np.max(scores, axis=-1, keepdims=True)
         p = np.exp(scores - m)
         p /= np.sum(p, axis=-1, keepdims=True)
@@ -84,25 +87,30 @@ async def core_mini_rvv_flashattention_test(dut):
 
     elf_name = "rvv_flashattention_test.elf"
     elf_path = r.Rlocation(
-        f"coralnpu_hw/tests/cocotb/rvv/ml_ops/gemma_kernels/{elf_name}")
+        f"coralnpu_hw/tests/cocotb/rvv/ml_ops/gemma_kernels/{elf_name}"
+    )
 
     if not elf_path or not os.path.exists(elf_path):
         dut._log.info(
-            f"Skipping test because ELF not found in sandbox: {elf_name}")
+            f"Skipping test because ELF not found in sandbox: {elf_name}"
+        )
         return
 
     await fixture.load_elf_and_lookup_symbols(
-        elf_path, ["q_buf", "k_buf", "v_buf", "o_buf", "csr_cycle_count"])
+        elf_path, ["q_buf", "k_buf", "v_buf", "o_buf", "csr_cycle_count"]
+    )
 
     num_heads_val = 4
     seq_len_val = 32
     d_val = 32
 
     dut._log.info(
-        f"Loading tensors for shape: {num_heads_val}x{seq_len_val}x{d_val}")
+        f"Loading tensors for shape: {num_heads_val}x{seq_len_val}x{d_val}"
+    )
     try:
         q_data, k_data, v_data, expected_output = load_real_attention_data(
-            num_heads_val, seq_len_val, d_val, dut, r)
+            num_heads_val, seq_len_val, d_val, dut, r
+        )
     except FileNotFoundError as e:
         dut._log.warning(f"Skipping test: {e}")
         return
@@ -122,15 +130,18 @@ async def core_mini_rvv_flashattention_test(dut):
     log_matmul_metrics(
         dut,
         f"core_mini_rvv_flashattention_{num_heads_val}x{seq_len_val}x{d_val}",
-        csr_cycle_count, num_heads_val, 2 * seq_len_val, d_val, seq_len_val)
+        csr_cycle_count, num_heads_val, 2 * seq_len_val, d_val, seq_len_val
+    )
 
     num_bytes = num_heads_val * seq_len_val * d_val * 4
     actual_packed = await fixture.read("o_buf", num_bytes)
-    actual_output = actual_packed.view(np.float32).reshape(
-        num_heads_val, seq_len_val, d_val)
+    actual_output = actual_packed.view(
+        np.float32
+    ).reshape(num_heads_val, seq_len_val, d_val)
 
     cos_sim = calculate_cosine_similarity(actual_output, expected_output)
     dut._log.info(
-        f"Average Cosine Similarity to Multi-Head Golden Model: {cos_sim:.6f}")
+        f"Average Cosine Similarity to Multi-Head Golden Model: {cos_sim:.6f}"
+    )
 
     assert cos_sim > 0.999, "Accuracy failure against model!"

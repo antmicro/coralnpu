@@ -35,7 +35,8 @@ async def zvfbf_test(dut):
 
     await fixture.load_elf_and_lookup_symbols(
         r.Rlocation('coralnpu_hw/tests/cocotb/' + elf_file),
-        ['vfwcvt_res', 'vfncvt_res', 'vfwmacc_res'])
+        ['vfwcvt_res', 'vfncvt_res', 'vfwmacc_res']
+    )
 
     cycles = await fixture.run_to_halt(timeout_cycles=1000000)
     dut._log.info(f"Cycle count: {cycles}")
@@ -50,7 +51,8 @@ async def zvfbf_test(dut):
         actual_bits = int.from_bytes(actual_bytes.tobytes(), 'little')
         actual_f = bits_to_fp32(actual_bits)
         dut._log.info(
-            f"Element {i}: {actual_f} (expected {expected_vfwcvt[i]})")
+            f"Element {i}: {actual_f} (expected {expected_vfwcvt[i]})"
+        )
         assert actual_f == expected_vfwcvt[i]
 
     # Verify vfncvtbf16.s.f.vv
@@ -78,7 +80,8 @@ async def zvfbf_test(dut):
         actual_bits = int.from_bytes(actual_bytes.tobytes(), 'little')
         actual_f = bits_to_fp32(actual_bits)
         dut._log.info(
-            f"Element {i}: {actual_f} (expected {expected_vfwmacc[i]})")
+            f"Element {i}: {actual_f} (expected {expected_vfwmacc[i]})"
+        )
         assert actual_f == expected_vfwmacc[i]
 
     dut._log.info("All Vector BF16 tests passed!")

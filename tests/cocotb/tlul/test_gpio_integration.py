@@ -26,6 +26,7 @@ GPIO_DATA_IN = GPIO_BASE + 0x00
 GPIO_DATA_OUT = GPIO_BASE + 0x04
 GPIO_OUT_EN = GPIO_BASE + 0x08
 
+
 async def setup_dut(dut):
     """Common setup logic."""
     clock = Clock(dut.io_clk_i, 10, "ns")
@@ -65,7 +66,11 @@ async def test_gpio_integration(dut):
     expected_val = 0xEF  # 8-bit LSB
     dut._log.info(f"Writing 0x{test_val:X} to GPIO DATA_OUT")
     write_txn = create_a_channel_req(
-        address=GPIO_DATA_OUT, data=test_val, mask=0xF, width=host_if.width, source=0x10
+        address=GPIO_DATA_OUT,
+        data=test_val,
+        mask=0xF,
+        width=host_if.width,
+        source=0x10
     )
     await host_if.host_put(write_txn)
     resp = await host_if.host_get_response()
@@ -87,7 +92,11 @@ async def test_gpio_integration(dut):
     dut._log.info(f"Host IF width: {host_if.width}")
     # Read from 0x40030000
     read_txn = create_a_channel_req(
-        address=GPIO_DATA_IN, width=host_if.width, is_read=True, size=0, source=0x10
+        address=GPIO_DATA_IN,
+        width=host_if.width,
+        is_read=True,
+        size=0,
+        source=0x10
     )
     dut._log.info(f"Read TXN: {read_txn}")
     await host_if.host_put(read_txn)

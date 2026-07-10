@@ -12,7 +12,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """Test runner for CoralNPU SoC Verilator simulation.
 
 Launches the Verilator simulator, loads an ELF binary via the SPI loader,
@@ -143,10 +142,14 @@ class SimTestRunner:
             long_path = f"coralnpu_hw/fpga/{build_target}/com.google.coralnpu_fpga_chip_verilator_0.1/sim-verilator/Vchip_verilator"
             sim_bin_path = r.Rlocation(long_path)
             if not sim_bin_path or not os.path.exists(sim_bin_path):
-                logging.error(f"Could not find simulator binary ({sim_bin_name}) in runfiles.")
+                logging.error(
+                    f"Could not find simulator binary ({sim_bin_name}) in runfiles."
+                )
                 return 1
 
-        loader_path = r.Rlocation("coralnpu_hw/utils/coralnpu_soc_loader/loader")
+        loader_path = r.Rlocation(
+            "coralnpu_hw/utils/coralnpu_soc_loader/loader"
+        )
         if not loader_path or not os.path.exists(loader_path):
             logging.error("Could not find loader binary in runfiles.")
             return 1
@@ -156,7 +159,9 @@ class SimTestRunner:
         sim_env["SPI_DPI_PORT"] = str(port)
 
         # Ensure required data files are in Current working directory
-        raw_image_path = r.Rlocation("coralnpu_hw/fpga/ip/ispyocto/grey_bars_320x240.raw")
+        raw_image_path = r.Rlocation(
+            "coralnpu_hw/fpga/ip/ispyocto/grey_bars_320x240.raw"
+        )
         if raw_image_path and os.path.exists(raw_image_path):
             if not os.path.exists("grey_bars_320x240.raw"):
                 try:
@@ -203,11 +208,9 @@ class SimTestRunner:
                         # Filter out misleading trace-related paths from the simulator,
                         # as they point to sandbox locations that are not useful after
                         # the test finishes.
-                        if (
-                            "Writing simulation traces to" in stripped
-                            or "You can view the simulation traces" in stripped
-                            or "gtkwave" in stripped
-                        ):
+                        if ("Writing simulation traces to" in stripped
+                                or "You can view the simulation traces"
+                                in stripped or "gtkwave" in stripped):
                             continue
 
                         logging.warning(f"[SIM] {stripped}")
@@ -222,7 +225,9 @@ class SimTestRunner:
                     pipe.close()
 
             self.threads.append(
-                threading.Thread(target=stdout_reader, args=(self.sim_proc.stdout,))
+                threading.Thread(
+                    target=stdout_reader, args=(self.sim_proc.stdout, )
+                )
             )
             self.threads.append(
                 threading.Thread(
@@ -266,7 +271,9 @@ class SimTestRunner:
                     "running loader in --csr_only mode."
                 )
             else:
-                logging.warning(f"SIM_TEST: Loading ELF over SPI: {self.elf_file}")
+                logging.warning(
+                    f"SIM_TEST: Loading ELF over SPI: {self.elf_file}"
+                )
             loader_cmd = [
                 loader_path,
                 self.elf_file,
@@ -287,7 +294,8 @@ class SimTestRunner:
 
             loader_threads = [
                 threading.Thread(
-                    target=self._stream_reader, args=(self.loader_proc.stdout, "LOADER")
+                    target=self._stream_reader,
+                    args=(self.loader_proc.stdout, "LOADER")
                 ),
                 threading.Thread(
                     target=self._stream_reader,
@@ -339,7 +347,9 @@ class SimTestRunner:
                 logging.warning("SIM_TEST: TEST FAILED")
                 return 1
             else:
-                logging.warning("SIM_TEST: No pass/fail detected within timeout.")
+                logging.warning(
+                    "SIM_TEST: No pass/fail detected within timeout."
+                )
                 return 1
 
         except (subprocess.TimeoutExpired, RuntimeError) as e:
@@ -359,7 +369,9 @@ class SimTestRunner:
 
 
 def main():
-    parser = argparse.ArgumentParser(description="CoralNPU SoC simulation test runner.")
+    parser = argparse.ArgumentParser(
+        description="CoralNPU SoC simulation test runner."
+    )
     parser.add_argument("elf_file", help="Path to the ELF binary to test.")
     parser.add_argument(
         "--sim_timeout",
@@ -368,26 +380,34 @@ def main():
         help="Seconds to wait for test result after loading.",
     )
     parser.add_argument(
-        "--trace", nargs="?", const="sim_trace.fst", help="Save waveform trace to file."
+        "--trace",
+        nargs="?",
+        const="sim_trace.fst",
+        help="Save waveform trace to file."
     )
     parser.add_argument(
-        "--highmem", action="store_true", help="Use highmem simulator configuration."
+        "--highmem",
+        action="store_true",
+        help="Use highmem simulator configuration."
     )
     parser.add_argument(
         "--itcm_size_kbytes", type=int, default=8, help="ITCM size in KBytes."
     )
     parser.add_argument(
-        "--dtcm_size_kbytes", type=int, default=32, help="DTCM size in KBytes."
+        "--dtcm_size_kbytes",
+        type=int,
+        default=32,
+        help="DTCM size in KBytes."
     )
     parser.add_argument(
         "--loader",
         choices=["backdoor", "spi"],
         default="backdoor",
         help="How to deliver the ELF to the SoC. 'backdoor' (default) uses "
-             "sram_load_elf via DPI in the simulator and only fires the "
-             "kickoff CSR writes over SPI. 'spi' streams the entire ELF over "
-             "the spi2tlul bridge (kept for spi2tlul-loader regression "
-             "coverage).",
+        "sram_load_elf via DPI in the simulator and only fires the "
+        "kickoff CSR writes over SPI. 'spi' streams the entire ELF over "
+        "the spi2tlul bridge (kept for spi2tlul-loader regression "
+        "coverage).",
     )
     args = parser.parse_args()
 

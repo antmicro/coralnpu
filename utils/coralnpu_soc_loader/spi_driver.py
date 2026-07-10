@@ -16,6 +16,7 @@ import os
 import socket
 import struct
 
+
 class SPIDriver:
     """A driver that communicates with a DPI-based SPI V2 server in simulation."""
 
@@ -51,7 +52,9 @@ class SPIDriver:
             self.sock = None
 
     def _send_command(self, cmd_type, addr=0, data=0, count=0, payload=b''):
-        cmd_header = struct.pack(self.COMMAND_FORMAT, cmd_type, addr, data, count)
+        cmd_header = struct.pack(
+            self.COMMAND_FORMAT, cmd_type, addr, data, count
+        )
         self.sock.sendall(cmd_header)
         if payload:
             self.sock.sendall(payload)
@@ -61,9 +64,9 @@ class SPIDriver:
             raise ConnectionAbortedError("Socket connection broken.")
 
         unpacked = struct.unpack(self.RESPONSE_FORMAT, response_data)
-        if not unpacked[1]: # success flag
-             raise RuntimeError(f"SPI command {cmd_type} failed in simulation.")
-        return unpacked[0] # data
+        if not unpacked[1]:  # success flag
+            raise RuntimeError(f"SPI command {cmd_type} failed in simulation.")
+        return unpacked[0]  # data
 
     def idle_clocking(self, cycles):
         """Sends a command to toggle the SPI clock for a number of cycles."""
@@ -74,22 +77,31 @@ class SPIDriver:
         if not data_bytes:
             return
         if len(data_bytes) % 16 != 0:
-             raise ValueError("Data length must be a multiple of 16 bytes")
+            raise ValueError("Data length must be a multiple of 16 bytes")
         num_beats = len(data_bytes) // 16
         # In V2 header, len field is num_beats - 1
-        self._send_command(self.CommandType.V2_WRITE, addr=target_addr, count=num_beats - 1, payload=data_bytes)
+        self._send_command(
+            self.CommandType.V2_WRITE,
+            addr=target_addr,
+            count=num_beats - 1,
+            payload=data_bytes
+        )
 
     def v2_read(self, target_addr, num_beats):
         """Reads data using the SPI V2 frame protocol."""
         if num_beats == 0:
             return []
-        self._send_command(self.CommandType.V2_READ, addr=target_addr, count=num_beats - 1)
+        self._send_command(
+            self.CommandType.V2_READ, addr=target_addr, count=num_beats - 1
+        )
         # Receive the raw data payload following the response header
         num_bytes = num_beats * 16
         read_payload = b''
         while len(read_payload) < num_bytes:
             chunk = self.sock.recv(num_bytes - len(read_payload))
             if not chunk:
-                raise ConnectionAbortedError("Socket connection broken during data read.")
+                raise ConnectionAbortedError(
+                    "Socket connection broken during data read."
+                )
             read_payload += chunk
         return list(read_payload)

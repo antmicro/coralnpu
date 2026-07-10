@@ -60,6 +60,7 @@ LMUL_TO_EMUL = {
     0b011: 8,
 }
 
+
 def construct_vtype(ma, ta, sew, lmul):
     """Constructs the vtype register."""
     return (ma << 7) | (ta << 6) | (sew << 3) | lmul

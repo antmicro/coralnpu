@@ -16,8 +16,12 @@ import cocotb
 from cocotb.queue import Queue
 from cocotb.triggers import RisingEdge, FallingEdge
 
+
 class AxiSlave:
-    def __init__(self, dut, name, clock, reset, log, has_memory=False, mem_base_addr=0):
+
+    def __init__(
+        self, dut, name, clock, reset, log, has_memory=False, mem_base_addr=0
+    ):
         self.dut = dut
         self.name = name
         self.clock = clock
@@ -49,7 +53,9 @@ class AxiSlave:
             ardata = await self.ar_queue.get()
             if self.has_memory:
                 addr = ardata["addr"] - self.mem_base_addr
-                bus_bytes = len(getattr(self.dut, f'io_{self.name}_read_data_bits_data')) // 8
+                bus_bytes = len(
+                    getattr(self.dut, f'io_{self.name}_read_data_bits_data')
+                ) // 8
                 aligned_addr = (addr // bus_bytes) * bus_bytes
                 read_bytes = bytearray()
                 for i in range(bus_bytes):
@@ -80,10 +86,12 @@ class AxiSlave:
                 data = wdata["data"]
                 for i in range(bus_bytes):
                     if (strb >> i) & 1:
-                        self.memory[aligned_addr + i] = data[bus_bytes-1-i]
+                        self.memory[aligned_addr + i] = data[bus_bytes - 1 - i]
             else:
-                resp = 3 # DECERR
-                self.log.error(f"Write received on slave {self.name}, which does not have memory.")
+                resp = 3  # DECERR
+                self.log.error(
+                    f"Write received on slave {self.name}, which does not have memory."
+                )
 
             # Create a response
             bdata = {
@@ -95,77 +103,95 @@ class AxiSlave:
     async def _ar_agent(self):
         getattr(self.dut, f'io_{self.name}_read_addr_ready').value = 1
         while True:
-          await RisingEdge(self.clock)
-          try:
-            if getattr(self.dut, f'io_{self.name}_read_addr_valid').value:
-              ardata = dict()
-              for prop in ["id", "addr", "size", "len", "burst"]:
-                  ardata[prop] = int(getattr(self.dut, f'io_{self.name}_read_addr_bits_{prop}').value)
-              await self.ar_queue.put(ardata)
-          except Exception as e:
-            print('X seen in _ar_agent: ' + str(e), flush=True)
+            await RisingEdge(self.clock)
+            try:
+                if getattr(self.dut, f'io_{self.name}_read_addr_valid').value:
+                    ardata = dict()
+                    for prop in ["id", "addr", "size", "len", "burst"]:
+                        ardata[prop] = int(
+                            getattr(
+                                self.dut,
+                                f'io_{self.name}_read_addr_bits_{prop}'
+                            ).value
+                        )
+                    await self.ar_queue.put(ardata)
+            except Exception as e:
+                print('X seen in _ar_agent: ' + str(e), flush=True)
 
     async def _r_agent(self, timeout=4096):
         while True:
-          while True:
-            await RisingEdge(self.clock)
-            getattr(self.dut, f'io_{self.name}_read_data_valid').value = 0
-            if self.r_queue.qsize():
-              break
-          rdata = await self.r_queue.get()
-          getattr(self.dut, f'io_{self.name}_read_data_valid').value = 1
-          for prop in ["id", "data", "resp", "last"]:
-            getattr(self.dut, f'io_{self.name}_read_data_bits_{prop}').value = rdata[prop]
-          await FallingEdge(self.clock)
-          timeout_count = 0
-          while getattr(self.dut, f'io_{self.name}_read_data_ready').value == 0:
+            while True:
+                await RisingEdge(self.clock)
+                getattr(self.dut, f'io_{self.name}_read_data_valid').value = 0
+                if self.r_queue.qsize():
+                    break
+            rdata = await self.r_queue.get()
+            getattr(self.dut, f'io_{self.name}_read_data_valid').value = 1
+            for prop in ["id", "data", "resp", "last"]:
+                getattr(self.dut, f'io_{self.name}_read_data_bits_{prop}'
+                        ).value = rdata[prop]
             await FallingEdge(self.clock)
-            timeout_count += 1
-            if timeout_count >= timeout:
-              assert False, "timeout waiting for rready"
+            timeout_count = 0
+            while getattr(self.dut,
+                          f'io_{self.name}_read_data_ready').value == 0:
+                await FallingEdge(self.clock)
+                timeout_count += 1
+                if timeout_count >= timeout:
+                    assert False, "timeout waiting for rready"
 
     async def _aw_agent(self):
         getattr(self.dut, f'io_{self.name}_write_addr_ready').value = 1
         while True:
-          await RisingEdge(self.clock)
-          try:
-            if getattr(self.dut, f'io_{self.name}_write_addr_valid').value:
-              awdata = dict()
-              for prop in ["id", "addr", "size", "len"]:
-                  awdata[prop] = int(getattr(self.dut, f'io_{self.name}_write_addr_bits_{prop}').value)
-              await self.aw_queue.put(awdata)
-          except Exception as e:
-            print('X seen in _aw_agent: ' + str(e), flush=True)
+            await RisingEdge(self.clock)
+            try:
+                if getattr(self.dut, f'io_{self.name}_write_addr_valid').value:
+                    awdata = dict()
+                    for prop in ["id", "addr", "size", "len"]:
+                        awdata[prop] = int(
+                            getattr(
+                                self.dut,
+                                f'io_{self.name}_write_addr_bits_{prop}'
+                            ).value
+                        )
+                    await self.aw_queue.put(awdata)
+            except Exception as e:
+                print('X seen in _aw_agent: ' + str(e), flush=True)
 
     async def _w_agent(self):
         getattr(self.dut, f'io_{self.name}_write_data_ready').value = 1
         while True:
-          await RisingEdge(self.clock)
-          try:
-            if getattr(self.dut, f'io_{self.name}_write_data_valid').value:
-              wdata = dict()
-              wdata["data"] = getattr(self.dut, f'io_{self.name}_write_data_bits_data').value.to_bytes(byteorder="big")
-              for prop in ["strb", "last"]:
-                  wdata[prop] = getattr(self.dut, f'io_{self.name}_write_data_bits_{prop}').value
-              await self.w_queue.put(wdata)
-          except Exception as e:
-            print('X seen in _w_agent: ' + str(e), flush=True)
+            await RisingEdge(self.clock)
+            try:
+                if getattr(self.dut, f'io_{self.name}_write_data_valid').value:
+                    wdata = dict()
+                    wdata["data"] = getattr(
+                        self.dut, f'io_{self.name}_write_data_bits_data'
+                    ).value.to_bytes(byteorder="big")
+                    for prop in ["strb", "last"]:
+                        wdata[prop] = getattr(
+                            self.dut, f'io_{self.name}_write_data_bits_{prop}'
+                        ).value
+                    await self.w_queue.put(wdata)
+            except Exception as e:
+                print('X seen in _w_agent: ' + str(e), flush=True)
 
     async def _b_agent(self):
         while True:
-          while True:
-            await RisingEdge(self.clock)
-            getattr(self.dut, f'io_{self.name}_write_resp_valid').value = 0
-            if self.b_queue.qsize():
-              break
-          bdata = await self.b_queue.get()
-          getattr(self.dut, f'io_{self.name}_write_resp_valid').value = 1
-          for prop in ["id", "resp"]:
-              getattr(self.dut, f'io_{self.name}_write_resp_bits_{prop}').value = bdata[prop]
-          await FallingEdge(self.clock)
-          timeout_count = 0
-          while getattr(self.dut, f'io_{self.name}_write_resp_ready').value == 0:
-            await FallingEdge(clock)
-            timeout_count += 1
-            if timeout_count >= timeout:
-              assert False, "timeout waiting for bready"
+            while True:
+                await RisingEdge(self.clock)
+                getattr(self.dut, f'io_{self.name}_write_resp_valid').value = 0
+                if self.b_queue.qsize():
+                    break
+            bdata = await self.b_queue.get()
+            getattr(self.dut, f'io_{self.name}_write_resp_valid').value = 1
+            for prop in ["id", "resp"]:
+                getattr(self.dut, f'io_{self.name}_write_resp_bits_{prop}'
+                        ).value = bdata[prop]
+            await FallingEdge(self.clock)
+            timeout_count = 0
+            while getattr(self.dut,
+                          f'io_{self.name}_write_resp_ready').value == 0:
+                await FallingEdge(clock)
+                timeout_count += 1
+                if timeout_count >= timeout:
+                    assert False, "timeout waiting for bready"

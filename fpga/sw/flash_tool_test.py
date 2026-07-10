@@ -31,13 +31,14 @@ from fpga.sw.flash_tool_lib import (
 
 
 class MockSPIDriver:
+
     def __init__(self):
         self.memory = {}  # addr -> bytearray(16)
 
     def write(self, addr, data):
         # Data can be any length multiple of 16
         for i in range(0, len(data), 16):
-            chunk = data[i : i + 16]
+            chunk = data[i:i + 16]
             self.memory[addr + i] = bytearray(chunk)
 
     def read(self, addr, num_beats):
@@ -48,6 +49,7 @@ class MockSPIDriver:
 
 
 class MockFirmware:
+
     def __init__(self, driver, symbols):
         self.driver = driver
         self.symbols = symbols
@@ -65,7 +67,7 @@ class MockFirmware:
         line_addr = (self.symbols["ready"] // 16) * 16
         offset = self.symbols["ready"] % 16
         line = self.driver.memory.get(line_addr, bytearray(16))
-        line[offset : offset + 4] = ready_val
+        line[offset:offset + 4] = ready_val
         self.driver.memory[line_addr] = line
 
         self.thread = threading.Thread(target=self._loop)
@@ -78,7 +80,9 @@ class MockFirmware:
 
     def _loop(self):
         while self.running:
-            cmd_line = self.driver.memory.get(self.symbols["cmd"], bytearray(16))
+            cmd_line = self.driver.memory.get(
+                self.symbols["cmd"], bytearray(16)
+            )
             cmd_id = int.from_bytes(cmd_line[0:4], "little")
 
             if cmd_id != 0:
@@ -130,6 +134,7 @@ class MockFirmware:
 
 
 class TestFlashTool(unittest.TestCase):
+
     def setUp(self):
         self.driver = MockSPIDriver()
         self.symbols = {

@@ -66,7 +66,9 @@ class FtdiSpiMaster:
                 "Please build it first: bazel build //sw/utils/nexus_loader"
             )
 
-        logger.info(f"Initialized FtdiSpiMaster wrapper using {self.nexus_loader_bin}")
+        logger.info(
+            f"Initialized FtdiSpiMaster wrapper using {self.nexus_loader_bin}"
+        )
 
     def _run_cmd(self, args, capture=False, timeout=10.0):
         """Runs the nexus_loader binary with the given args.
@@ -91,19 +93,27 @@ class FtdiSpiMaster:
         try:
             if capture:
                 res = subprocess.run(
-                    cmd, stdout=subprocess.PIPE, check=True, timeout=timeout + 1.0
+                    cmd,
+                    stdout=subprocess.PIPE,
+                    check=True,
+                    timeout=timeout + 1.0
                 )
                 return res.stdout
             else:
                 subprocess.run(cmd, check=True, timeout=timeout + 1.0)
         except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as e:
             if "--reset" not in args and not self._recovering:
-                logger.warning("Command failed. Attempting FPGA self-healing recovery...")
+                logger.warning(
+                    "Command failed. Attempting FPGA self-healing recovery..."
+                )
                 if self.recover_fpga():
                     logger.info("Recovery succeeded. Retrying command...")
                     if capture:
                         return subprocess.run(
-                            cmd, stdout=subprocess.PIPE, check=True, timeout=timeout + 1.0
+                            cmd,
+                            stdout=subprocess.PIPE,
+                            check=True,
+                            timeout=timeout + 1.0
                         ).stdout
                     else:
                         subprocess.run(cmd, check=True, timeout=timeout + 1.0)
@@ -117,7 +127,9 @@ class FtdiSpiMaster:
             # 1. Derive SOM host
             match = re.search(r"Nexus-FTDI-(\d+)", self.usb_serial)
             if not match:
-                logger.error(f"Cannot derive SOM host from serial {self.usb_serial}")
+                logger.error(
+                    f"Cannot derive SOM host from serial {self.usb_serial}"
+                )
                 return False
             nexus_id = match.group(1)
             som_host = f"nexus{nexus_id}.mtv.corp.google.com"
@@ -126,28 +138,38 @@ class FtdiSpiMaster:
             logger.info("Attempting non-destructive soft reset via SPI...")
             try:
                 subprocess.run(
-                    [self.nexus_loader_bin, "--serial", self.usb_serial, "--soft_reset"],
+                    [
+                        self.nexus_loader_bin, "--serial", self.usb_serial,
+                        "--soft_reset"
+                    ],
                     check=True,
                     timeout=5.0,
                 )
                 if self._is_responsive():
                     logger.info("Soft reset succeeded. FPGA is responsive.")
                     return True
-                logger.warning("Soft reset completed but FPGA is still unresponsive.")
+                logger.warning(
+                    "Soft reset completed but FPGA is still unresponsive."
+                )
             except subprocess.SubprocessError as e:
                 logger.warning(f"Soft reset command failed: {e}")
 
             # 3. Fallback to destructive hard reset (toggles PROG_B, wipes FPGA)
             logger.info("Falling back to destructive hard reset...")
             subprocess.run(
-                [self.nexus_loader_bin, "--serial", self.usb_serial, "--reset"],
+                [
+                    self.nexus_loader_bin, "--serial", self.usb_serial,
+                    "--reset"
+                ],
                 check=True,
                 timeout=15.0,
             )
 
             # 3. Load bitstream via SSH
             bitstream = "chip_nexus.bin"
-            logger.info(f"Reloading bitstream {bitstream} on {som_host} via zturn...")
+            logger.info(
+                f"Reloading bitstream {bitstream} on {som_host} via zturn..."
+            )
             ssh_cmd = [
                 "ssh",
                 "-o",
@@ -155,14 +177,18 @@ class FtdiSpiMaster:
                 f"root@{som_host}",
                 f"cd /mnt/mmcp1 && ./zturn -d a {bitstream}",
             ]
-            res = subprocess.run(ssh_cmd, capture_output=True, text=True, timeout=30.0)
+            res = subprocess.run(
+                ssh_cmd, capture_output=True, text=True, timeout=30.0
+            )
             if res.returncode != 1:
                 logger.error(
                     f"zturn failed with exit code {res.returncode}. Output: {res.stdout}\n{res.stderr}"
                 )
                 return False
 
-            logger.info("FPGA reloaded successfully. Waiting for DDR calibration...")
+            logger.info(
+                "FPGA reloaded successfully. Waiting for DDR calibration..."
+            )
             time.sleep(2.0)  # Wait for DDR calibration
             return True
         except Exception as e:
@@ -187,7 +213,10 @@ class FtdiSpiMaster:
             # Try to read word at 0x0 (ITCM). Use a short timeout.
             # We bypass _run_cmd to avoid recursion.
             subprocess.run(
-                [self.nexus_loader_bin, "--serial", self.usb_serial, "--read_word_addr", "0x0"],
+                [
+                    self.nexus_loader_bin, "--serial", self.usb_serial,
+                    "--read_word_addr", "0x0"
+                ],
                 check=True,
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
@@ -201,9 +230,11 @@ class FtdiSpiMaster:
         pass
 
     def write_word(self, address, data):
-        self._run_cmd(
-            ["--write_word_addr", hex(address), "--write_word_val", hex(data)]
-        )
+        self._run_cmd([
+            "--write_word_addr",
+            hex(address), "--write_word_val",
+            hex(data)
+        ])
 
     def read_word(self, address):
         out = self._run_cmd(["--read_word_addr", hex(address)], capture=True)
@@ -218,7 +249,10 @@ class FtdiSpiMaster:
         raise ValueError(f"Could not find DATA_WORD in output: {out}")
 
     def load_file(self, file_path, address):
-        self._run_cmd(["--load_data", file_path, "--load_data_addr", hex(address)])
+        self._run_cmd([
+            "--load_data", file_path, "--load_data_addr",
+            hex(address)
+        ])
 
     def load_data(self, data, address):
         tf = tempfile.NamedTemporaryFile(delete=False)
@@ -264,14 +298,12 @@ class FtdiSpiMaster:
 
     def set_entry_point(self, entry_point):
         logger.info(f"Setting entry point to 0x{entry_point:x}")
-        self._run_cmd(
-            [
-                "--csr_base",
-                hex(self.csr_base_addr),
-                "--set_entry_point",
-                hex(entry_point),
-            ]
-        )
+        self._run_cmd([
+            "--csr_base",
+            hex(self.csr_base_addr),
+            "--set_entry_point",
+            hex(entry_point),
+        ])
 
     def start_core(self):
         logger.info("Starting core...")
@@ -279,7 +311,11 @@ class FtdiSpiMaster:
 
     def poll_for_halt(self, timeout=10.0, status_addr=None, status_size=None):
         logger.info("Polling for halt...")
-        args = ["--poll_halt", str(timeout), "--csr_base", hex(self.csr_base_addr)]
+        args = [
+            "--poll_halt",
+            str(timeout), "--csr_base",
+            hex(self.csr_base_addr)
+        ]
         if status_addr is not None:
             args += ["--poll_status_addr", hex(status_addr)]
         if status_size is not None:
@@ -295,7 +331,9 @@ class FtdiSpiMaster:
         if size == 0:
             return bytearray()
         out = self._run_cmd(
-            ["--read_data_addr", hex(address), "--read_data_size", str(size)],
+            ["--read_data_addr",
+             hex(address), "--read_data_size",
+             str(size)],
             capture=True,
             timeout=30.0,
         )

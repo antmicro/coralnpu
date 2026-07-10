@@ -19,14 +19,17 @@ import random
 from cocotb.clock import Clock
 from cocotb.triggers import ClockCycles, RisingEdge
 
+
 class TLUL_OpcodeA(enum.IntEnum):
-    PutFullData    = 0
+    PutFullData = 0
     PutPartialData = 1
-    Get            = 4
+    Get = 4
+
 
 class TLUL_OpcodeD(enum.IntEnum):
-    AccessAck     = 0
+    AccessAck = 0
     AccessAckData = 1
+
 
 async def reset_dut(dut):
     """Applies reset to the DUT."""
@@ -44,6 +47,7 @@ async def reset_dut(dut):
     dut.reset.value = 0
     await ClockCycles(dut.clock, 2)
 
+
 async def wait_for_signal(clock, signal, timeout_cycles=1000, message=None):
     """Waits for a signal to be asserted."""
     if message is None:
@@ -55,6 +59,7 @@ async def wait_for_signal(clock, signal, timeout_cycles=1000, message=None):
             return
     else:
         raise RuntimeError(message)
+
 
 async def tl_send_get(dut, address, source, size, timeout_cycles=1000):
     """Sends a TileLink Get request."""
@@ -71,7 +76,9 @@ async def tl_send_get(dut, address, source, size, timeout_cycles=1000):
     dut.io_tl_a_valid.value = 0
 
 
-async def tl_send_put(dut, address, source, size, data, mask, timeout_cycles=1000):
+async def tl_send_put(
+    dut, address, source, size, data, mask, timeout_cycles=1000
+):
     """Sends a TileLink PutFullData request."""
     dut.io_tl_a_valid.value = 1
     dut.io_tl_a_bits_opcode.value = TLUL_OpcodeA.PutFullData
@@ -105,25 +112,36 @@ async def test_put_request(dut):
     # Test parameters
     addr_width = 32
     source_width = 6
-    data_width_bytes = 32 # Corresponds to 256 bits
+    data_width_bytes = 32  # Corresponds to 256 bits
     timeout_cycles = 1000
 
-    size_power = random.randint(0, 5) # 2**5 = 32 bytes
+    size_power = random.randint(0, 5)  # 2**5 = 32 bytes
     test_size = size_power
     num_bytes = 2**size_power
 
     test_addr = random.randint(0, (2**addr_width) - 1)
     test_source = random.randint(0, (2**source_width) - 1)
-    test_data = random.randint(0, (2**(data_width_bytes*8)) - 1)
+    test_data = random.randint(0, (2**(data_width_bytes * 8)) - 1)
     test_mask = (1 << num_bytes) - 1
 
     # Drive TL Put request
-    await tl_send_put(dut, address=test_addr, source=test_source, size=test_size, data=test_data, mask=test_mask, timeout_cycles=timeout_cycles)
+    await tl_send_put(
+        dut,
+        address=test_addr,
+        source=test_source,
+        size=test_size,
+        data=test_data,
+        mask=test_mask,
+        timeout_cycles=timeout_cycles
+    )
 
     #
     # Check AXI Write Address and Data Channels
     #
-    await wait_for_signal(dut.clock, dut.io_axi_write_addr_valid, timeout_cycles, "Timeout waiting for AXI AWVALID for Put")
+    await wait_for_signal(
+        dut.clock, dut.io_axi_write_addr_valid, timeout_cycles,
+        "Timeout waiting for AXI AWVALID for Put"
+    )
 
     assert dut.io_axi_write_addr_valid.value, "AXI AWVALID should be high"
     assert dut.io_axi_write_data_valid.value, "AXI WVALID should be high"
@@ -148,7 +166,9 @@ async def test_put_request(dut):
     dut.io_axi_write_resp_bits_id.value = test_source
     dut.io_axi_write_resp_bits_resp.value = 0  # OKAY
 
-    await wait_for_signal(dut.clock, dut.io_axi_write_resp_ready, timeout_cycles)
+    await wait_for_signal(
+        dut.clock, dut.io_axi_write_resp_ready, timeout_cycles
+    )
 
     await RisingEdge(dut.clock)
     dut.io_axi_write_resp_valid.value = 0
@@ -157,7 +177,10 @@ async def test_put_request(dut):
     # Check TileLink D Channel
     #
     dut.io_tl_d_ready.value = 1
-    await wait_for_signal(dut.clock, dut.io_tl_d_valid, timeout_cycles, "Timeout waiting for TL D_VALID for Put")
+    await wait_for_signal(
+        dut.clock, dut.io_tl_d_valid, timeout_cycles,
+        "Timeout waiting for TL D_VALID for Put"
+    )
 
     assert dut.io_tl_d_valid.value, "TL D_VALID should be high"
     assert dut.io_tl_d_bits_opcode.value == TLUL_OpcodeD.AccessAck, "TL D_OPCODE should be AccessAck"
@@ -167,6 +190,7 @@ async def test_put_request(dut):
 
     # Allow a few extra cycles for waveform viewing.
     await ClockCycles(dut.clock, 5)
+
 
 @cocotb.test()
 async def test_get_request(dut):
@@ -195,10 +219,16 @@ async def test_get_request(dut):
 
     test_addr = random.randint(0, (2**addr_width) - 1)
     test_source = random.randint(0, (2**source_width) - 1)
-    test_data = random.randint(0, (2**(data_width_bytes*8)) - 1)
+    test_data = random.randint(0, (2**(data_width_bytes * 8)) - 1)
 
     # Drive TL Get request
-    await tl_send_get(dut, address=test_addr, source=test_source, size=test_size, timeout_cycles=timeout_cycles)
+    await tl_send_get(
+        dut,
+        address=test_addr,
+        source=test_source,
+        size=test_size,
+        timeout_cycles=timeout_cycles
+    )
 
     #
     # Check AXI Read Address Channel
@@ -223,7 +253,9 @@ async def test_get_request(dut):
     dut.io_axi_read_data_bits_id.value = test_source
     dut.io_axi_read_data_bits_resp.value = 0  # OKAY
 
-    await wait_for_signal(dut.clock, dut.io_axi_read_data_ready, timeout_cycles)
+    await wait_for_signal(
+        dut.clock, dut.io_axi_read_data_ready, timeout_cycles
+    )
 
     await RisingEdge(dut.clock)
     dut.io_axi_read_data_valid.value = 0
@@ -264,25 +296,36 @@ async def test_backpressure(dut):
     # Test parameters
     addr_width = 32
     source_width = 6
-    data_width_bytes = 32 # Corresponds to 256 bits
+    data_width_bytes = 32  # Corresponds to 256 bits
     timeout_cycles = 1000
 
-    size_power = random.randint(0, 5) # 2**5 = 32 bytes
+    size_power = random.randint(0, 5)  # 2**5 = 32 bytes
     test_size = size_power
     num_bytes = 2**size_power
 
     test_addr = random.randint(0, (2**addr_width) - 1)
     test_source = random.randint(0, (2**source_width) - 1)
-    test_data = random.randint(0, (2**(data_width_bytes*8)) - 1)
+    test_data = random.randint(0, (2**(data_width_bytes * 8)) - 1)
     test_mask = (1 << num_bytes) - 1
 
     # Drive TL Put request
-    await tl_send_put(dut, address=test_addr, source=test_source, size=test_size, data=test_data, mask=test_mask, timeout_cycles=timeout_cycles)
+    await tl_send_put(
+        dut,
+        address=test_addr,
+        source=test_source,
+        size=test_size,
+        data=test_data,
+        mask=test_mask,
+        timeout_cycles=timeout_cycles
+    )
 
     #
     # Check AXI Write Address and Data Channels
     #
-    await wait_for_signal(dut.clock, dut.io_axi_write_addr_valid, timeout_cycles, "Timeout waiting for AXI AWVALID for Put")
+    await wait_for_signal(
+        dut.clock, dut.io_axi_write_addr_valid, timeout_cycles,
+        "Timeout waiting for AXI AWVALID for Put"
+    )
 
     assert dut.io_axi_write_addr_valid.value, "AXI AWVALID should be high"
     assert dut.io_axi_write_data_valid.value, "AXI WVALID should be high"
@@ -311,7 +354,9 @@ async def test_backpressure(dut):
     dut.io_axi_write_resp_bits_id.value = test_source
     dut.io_axi_write_resp_bits_resp.value = 0  # OKAY
 
-    await wait_for_signal(dut.clock, dut.io_axi_write_resp_ready, timeout_cycles)
+    await wait_for_signal(
+        dut.clock, dut.io_axi_write_resp_ready, timeout_cycles
+    )
 
     await RisingEdge(dut.clock)
     dut.io_axi_write_resp_valid.value = 0
@@ -320,7 +365,10 @@ async def test_backpressure(dut):
     # Check TileLink D Channel
     #
     dut.io_tl_d_ready.value = 1
-    await wait_for_signal(dut.clock, dut.io_tl_d_valid, timeout_cycles, "Timeout waiting for TL D_VALID for Put")
+    await wait_for_signal(
+        dut.clock, dut.io_tl_d_valid, timeout_cycles,
+        "Timeout waiting for TL D_VALID for Put"
+    )
 
     assert dut.io_tl_d_valid.value, "TL D_VALID should be high"
     assert dut.io_tl_d_bits_opcode.value == TLUL_OpcodeD.AccessAck, "TL D_OPCODE should be AccessAck"
@@ -360,7 +408,7 @@ async def test_put_then_get(dut):
     put_num_bytes = 2**put_size_power
     put_addr = random.randint(0, (2**addr_width) - 1)
     put_source = random.randint(0, (2**source_width) - 1)
-    put_data = random.randint(0, (2**(data_width_bytes*8)) - 1)
+    put_data = random.randint(0, (2**(data_width_bytes * 8)) - 1)
     put_mask = (1 << put_num_bytes) - 1
 
     # Get parameters
@@ -368,17 +416,28 @@ async def test_put_then_get(dut):
     get_size = get_size_power
     get_addr = random.randint(0, (2**addr_width) - 1)
     get_source = random.randint(0, (2**source_width) - 1)
-    get_data = random.randint(0, (2**(data_width_bytes*8)) - 1)
-    
+    get_data = random.randint(0, (2**(data_width_bytes * 8)) - 1)
+
     #
     # Complete Put Transaction
     #
-    await tl_send_put(dut, address=put_addr, source=put_source, size=put_size, data=put_data, mask=put_mask, timeout_cycles=timeout_cycles)
-    
-    await wait_for_signal(dut.clock, dut.io_axi_write_addr_valid, timeout_cycles, "Timeout waiting for AXI AWVALID for Put")
+    await tl_send_put(
+        dut,
+        address=put_addr,
+        source=put_source,
+        size=put_size,
+        data=put_data,
+        mask=put_mask,
+        timeout_cycles=timeout_cycles
+    )
+
+    await wait_for_signal(
+        dut.clock, dut.io_axi_write_addr_valid, timeout_cycles,
+        "Timeout waiting for AXI AWVALID for Put"
+    )
     assert dut.io_axi_write_addr_valid.value, "AXI AWVALID should be high for Put"
     assert dut.io_axi_write_data_valid.value, "AXI WVALID should be high for Put"
-    
+
     dut.io_axi_write_addr_ready.value = 1
     dut.io_axi_write_data_ready.value = 1
     await RisingEdge(dut.clock)
@@ -387,7 +446,9 @@ async def test_put_then_get(dut):
 
     await RisingEdge(dut.clock)
     dut.io_axi_write_resp_valid.value = 1
-    await wait_for_signal(dut.clock, dut.io_axi_write_resp_ready, timeout_cycles)
+    await wait_for_signal(
+        dut.clock, dut.io_axi_write_resp_ready, timeout_cycles
+    )
     dut.io_axi_write_resp_valid.value = 0
 
     dut.io_tl_d_ready.value = 1
@@ -399,11 +460,17 @@ async def test_put_then_get(dut):
     #
     # Complete Get Transaction
     #
-    await tl_send_get(dut, address=get_addr, source=get_source, size=get_size, timeout_cycles=timeout_cycles)
-    
+    await tl_send_get(
+        dut,
+        address=get_addr,
+        source=get_source,
+        size=get_size,
+        timeout_cycles=timeout_cycles
+    )
+
     await RisingEdge(dut.clock)
     assert dut.io_axi_read_addr_valid.value, "AXI ARVALID should be high for Get"
-    
+
     dut.io_axi_read_addr_ready.value = 1
     await RisingEdge(dut.clock)
     dut.io_axi_read_addr_ready.value = 0
@@ -411,7 +478,9 @@ async def test_put_then_get(dut):
     await RisingEdge(dut.clock)
     dut.io_axi_read_data_valid.value = 1
     dut.io_axi_read_data_bits_data.value = get_data
-    await wait_for_signal(dut.clock, dut.io_axi_read_data_ready, timeout_cycles)
+    await wait_for_signal(
+        dut.clock, dut.io_axi_read_data_ready, timeout_cycles
+    )
     dut.io_axi_read_data_valid.value = 0
 
     dut.io_tl_d_ready.value = 1

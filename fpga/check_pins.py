@@ -5,13 +5,16 @@ import argparse
 import sys
 import re
 
+
 def parse_verilog_ports(sv_file):
     ports = {}
     # Regex to match input/output/inout
     # Group 1: direction
     # Group 2: array range (optional)
     # Group 3: name
-    regex = re.compile(r'^\s*(input|output|inout)\s+(?:logic|reg|wire)?\s*(?:\[([^\]]+)\])?\s*([a-zA-Z0-9_]+)\s*,?\s*')
+    regex = re.compile(
+        r'^\s*(input|output|inout)\s+(?:logic|reg|wire)?\s*(?:\[([^\]]+)\])?\s*([a-zA-Z0-9_]+)\s*,?\s*'
+    )
 
     with open(sv_file, 'r') as f:
         for line in f:
@@ -44,12 +47,15 @@ def parse_verilog_ports(sv_file):
                 }
     return ports
 
+
 def parse_xdc_mappings(xdc_file):
     mappings = set()
     # Updated regex to support:
     # - Optional spaces after [
     # - Comma or space separated multiple ports
-    regex = re.compile(r'\[\s*get_ports\s+[\{\"]?\s*([a-zA-Z0-9_\[\],\s]+)\s*[\}\"]?\s*\]')
+    regex = re.compile(
+        r'\[\s*get_ports\s+[\{\"]?\s*([a-zA-Z0-9_\[\],\s]+)\s*[\}\"]?\s*\]'
+    )
 
     with open(xdc_file, 'r') as f:
         for line in f:
@@ -63,10 +69,20 @@ def parse_xdc_mappings(xdc_file):
                         mappings.add(p.strip())
     return mappings
 
+
 def main():
-    parser = argparse.ArgumentParser(description="Verify top-level SystemVerilog ports are mapped in XDC.")
-    parser.add_argument("--xdc", action="append", required=True, help="Path to XDC file(s). Can use multiple times.")
-    parser.add_argument("--sv", required=True, help="Path to top-level SystemVerilog file.")
+    parser = argparse.ArgumentParser(
+        description="Verify top-level SystemVerilog ports are mapped in XDC."
+    )
+    parser.add_argument(
+        "--xdc",
+        action="append",
+        required=True,
+        help="Path to XDC file(s). Can use multiple times."
+    )
+    parser.add_argument(
+        "--sv", required=True, help="Path to top-level SystemVerilog file."
+    )
 
     args = parser.parse_args()
 
@@ -84,20 +100,32 @@ def main():
     should_ignore_ddr = not has_ddr_mappings
 
     if should_ignore_ddr:
-        print("====================================================================================================")
-        print("PIN CHECKER: DDR pin check is DISABLED (no DDR4 mappings found in XDC or forced ignore)")
-        print("====================================================================================================")
+        print(
+            "===================================================================================================="
+        )
+        print(
+            "PIN CHECKER: DDR pin check is DISABLED (no DDR4 mappings found in XDC or forced ignore)"
+        )
+        print(
+            "===================================================================================================="
+        )
     else:
-        print("====================================================================================================")
-        print("PIN CHECKER: DDR pin check is ENABLED (DDR4 mappings found in XDC)")
-        print("====================================================================================================")
+        print(
+            "===================================================================================================="
+        )
+        print(
+            "PIN CHECKER: DDR pin check is ENABLED (DDR4 mappings found in XDC)"
+        )
+        print(
+            "===================================================================================================="
+        )
 
     missing = []
 
     for name, info in ports.items():
-        if should_ignore_ddr and (name.startswith("c0_ddr4_") or name == "c0_sys_clk_n" or name == "c0_sys_clk_p"):
+        if should_ignore_ddr and (name.startswith("c0_ddr4_") or name
+                                  == "c0_sys_clk_n" or name == "c0_sys_clk_p"):
             continue
-
 
         if info['width'] > 1:
             if info['range']:
@@ -112,7 +140,9 @@ def main():
                             if bit_name not in mappings:
                                 missing.append(bit_name)
                     except ValueError:
-                        print(f"Warning: Parametric range for vector {name}: {info['range']}. Doing fallback prefix check.")
+                        print(
+                            f"Warning: Parametric range for vector {name}: {info['range']}. Doing fallback prefix check."
+                        )
                         found_base = False
                         for m in mappings:
                             if m.startswith(name):
@@ -139,6 +169,7 @@ def main():
     else:
         print("All top-level ports are mapped to pins!")
         sys.exit(0)
+
 
 if __name__ == "__main__":
     main()

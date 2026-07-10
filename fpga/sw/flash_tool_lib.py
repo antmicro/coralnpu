@@ -51,7 +51,9 @@ class DriverWrapper:
         elif hasattr(self.driver, "load_data"):
             return self.driver.load_data(data, addr)
         else:
-            raise AttributeError("Driver has no write, v2_write, or load_data method")
+            raise AttributeError(
+                "Driver has no write, v2_write, or load_data method"
+            )
 
     def read(self, addr, num_beats):
         if hasattr(self.driver, "read"):
@@ -62,10 +64,13 @@ class DriverWrapper:
         elif hasattr(self.driver, "read_data"):
             return self.driver.read_data(addr, num_beats * 16, verbose=False)
         else:
-            raise AttributeError("Driver has no read, v2_read, or read_data method")
+            raise AttributeError(
+                "Driver has no read, v2_read, or read_data method"
+            )
 
 
 class FlashTool:
+
     def __init__(self, driver, symbols):
         self.driver = DriverWrapper(driver)
         self.ready_addr = symbols["ready"]
@@ -77,7 +82,9 @@ class FlashTool:
         self.page_size = 0
 
     def wait_for_ready(self, timeout=60.0):
-        logging.info(f"HOST: Waiting for ready magic at 0x{self.ready_addr:08x}...")
+        logging.info(
+            f"HOST: Waiting for ready magic at 0x{self.ready_addr:08x}..."
+        )
         start_time = time.time()
         while time.time() - start_time < timeout:
             ready_pkt = bytes(self.driver.read(self.ready_addr, 1))
@@ -114,9 +121,13 @@ class FlashTool:
 
             if resp_cmd == cmd:
                 if status == FLASH_TOOL_STATUS_CRC_MISMATCH:
-                    raise RuntimeError(f"Command {cmd} failed: CRC MISMATCH on device")
+                    raise RuntimeError(
+                        f"Command {cmd} failed: CRC MISMATCH on device"
+                    )
                 if status != FLASH_TOOL_STATUS_OK:
-                    raise RuntimeError(f"Command {cmd} failed with status {status}")
+                    raise RuntimeError(
+                        f"Command {cmd} failed with status {status}"
+                    )
                 return resp_pkt
             time.sleep(0.1)
         raise RuntimeError(f"Timeout waiting for command {cmd} response")
@@ -158,7 +169,7 @@ class FlashTool:
             remaining_in_sector = self.sector_size - offset
             chunk_len = min(total_len - i, remaining_in_sector)
 
-            chunk = data[i : i + chunk_len]
+            chunk = data[i:i + chunk_len]
             logging.info(
                 f"HOST: Programming chunk at 0x{curr_addr:08x} ({len(chunk)} bytes)..."
             )
@@ -171,7 +182,10 @@ class FlashTool:
 
             self.driver.write(self.buffer_addr, padded_chunk)
             self.send_cmd(
-                FLASH_TOOL_CMD_PROGRAM_DATA, curr_addr, len(chunk), crc32=chunk_crc
+                FLASH_TOOL_CMD_PROGRAM_DATA,
+                curr_addr,
+                len(chunk),
+                crc32=chunk_crc
             )
 
             curr_addr += chunk_len

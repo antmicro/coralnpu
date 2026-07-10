@@ -39,16 +39,19 @@ async def core_mini_rvv_rms_norm_test(dut):
 
     elf_name = "rvv_rms_norm.elf"
     elf_path = r.Rlocation(
-        f"coralnpu_hw/tests/cocotb/rvv/ml_ops/gemma_kernels/{elf_name}")
+        f"coralnpu_hw/tests/cocotb/rvv/ml_ops/gemma_kernels/{elf_name}"
+    )
 
     if not elf_path or not os.path.exists(elf_path):
         raise FileNotFoundError(f"Could not find ELF at {elf_path}")
 
     dut._log.info(f"Loading ELF: {elf_path}")
-    await fixture.load_elf_and_lookup_symbols(elf_path, [
-        "rms_input", "rms_weight", "rms_output", "active_seq_len",
-        "active_hidden_size", "active_epsilon", "cycle_count"
-    ])
+    await fixture.load_elf_and_lookup_symbols(
+        elf_path, [
+            "rms_input", "rms_weight", "rms_output", "active_seq_len",
+            "active_hidden_size", "active_epsilon", "cycle_count"
+        ]
+    )
 
     await fixture.core_mini_axi.reset()
 
@@ -73,23 +76,29 @@ async def core_mini_rvv_rms_norm_test(dut):
 
         input_data = rng.uniform(-1.0, 1.0,
                                  (seq_len, hidden_size)).astype(np.float32)
-        weight_data = rng.uniform(-0.5, 0.5, (hidden_size,)).astype(np.float32)
+        weight_data = rng.uniform(-0.5, 0.5,
+                                  (hidden_size, )).astype(np.float32)
 
         expected_output = golden_rms_norm(input_data, weight_data, eps=1e-6)
 
-        await fixture.write('active_seq_len',
-                            np.array([seq_len], dtype=np.uint32))
-        await fixture.write('active_hidden_size',
-                            np.array([hidden_size], dtype=np.uint32))
-        await fixture.write('active_epsilon', np.array([1e-6],
-                                                       dtype=np.float32))
+        await fixture.write(
+            'active_seq_len', np.array([seq_len], dtype=np.uint32)
+        )
+        await fixture.write(
+            'active_hidden_size', np.array([hidden_size], dtype=np.uint32)
+        )
+        await fixture.write(
+            'active_epsilon', np.array([1e-6], dtype=np.float32)
+        )
 
         # Write input arrays to the simulated memory
         await fixture.write('rms_input', input_data.flatten())
         await fixture.write('rms_weight', weight_data.flatten())
         # Zero out output array
-        await fixture.write('rms_output',
-                            np.zeros_like(expected_output).flatten())
+        await fixture.write(
+            'rms_output',
+            np.zeros_like(expected_output).flatten()
+        )
 
         sim_cycles = await fixture.run_to_halt(timeout_cycles=10000000)
 
@@ -97,15 +106,17 @@ async def core_mini_rvv_rms_norm_test(dut):
                                              4)).view(dtype=np.uint32)[0])
 
         output_size_bytes = seq_len * hidden_size * 4
-        actual_output = (await
-                         fixture.read('rms_output', output_size_bytes)).view(
-                             dtype=np.float32).reshape(seq_len, hidden_size)
+        actual_output = (await fixture.read('rms_output',
+                                            output_size_bytes)).view(
+                                                dtype=np.float32
+                                            ).reshape(seq_len, hidden_size)
 
-        np.testing.assert_allclose(expected_output,
-                                   actual_output,
-                                   rtol=1e-6,
-                                   atol=1e-6)
+        np.testing.assert_allclose(
+            expected_output, actual_output, rtol=1e-6, atol=1e-6
+        )
 
         total_elements = seq_len * hidden_size
-        log_vector_metrics(dut, f"RMS Norm Shape: {seq_len}x{hidden_size}",
-                           npu_cycles, total_elements)
+        log_vector_metrics(
+            dut, f"RMS Norm Shape: {seq_len}x{hidden_size}", npu_cycles,
+            total_elements
+        )

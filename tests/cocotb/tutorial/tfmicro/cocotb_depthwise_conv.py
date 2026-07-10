@@ -19,13 +19,13 @@ from bazel_tools.tools.python.runfiles import runfiles
 from coralnpu_test_utils.sim_test_fixture import Fixture
 
 
-def tolerate(target: int, tolerance = 1.2) -> int:
+def tolerate(target: int, tolerance=1.2) -> int:
     return int(target * tolerance)
 
 
 class DepthwiseConvTest:
     # frozen: filter_xy=3, padding=1, dilation=1
-    def __init__(self, in_d, dm = 1, stride = 1, out_h = 4, out_w = 4):
+    def __init__(self, in_d, dm=1, stride=1, out_h=4, out_w=4):
         self.dm = dm
         self.stride = stride
         out_d = in_d * dm
@@ -39,14 +39,14 @@ class DepthwiseConvTest:
 
         r = runfiles.Create()
         self.elf_file = r.Rlocation(
-            'coralnpu_hw/tests/cocotb/tutorial/tfmicro/depthwise_conv_test.elf')
+            'coralnpu_hw/tests/cocotb/tutorial/tfmicro/depthwise_conv_test.elf'
+        )
         self.fixture = None
 
     async def load_and_populate_input(self, dut):
         self.fixture = await Fixture.Create(dut, highmem=True)
         await self.fixture.load_elf_and_lookup_symbols(
-            self.elf_file,
-            [
+            self.elf_file, [
                 'impl',
                 'run_ref',
                 'run_optimized',
@@ -65,12 +65,15 @@ class DepthwiseConvTest:
 
         rng = np.random.default_rng()
         filter_data = rng.integers(
-            -128, 128, self.f_shape, dtype=np.int8).flatten()
+            -128, 128, self.f_shape, dtype=np.int8
+        ).flatten()
         # acc comes from 9x int16 so bias can't be full range.
         bias_data = rng.integers(
-            -100000, 100000, self.out_shape[3], dtype=np.int32)
+            -100000, 100000, self.out_shape[3], dtype=np.int32
+        )
         input_data = rng.integers(
-            -128, 128, self.in_shape, dtype=np.int8).flatten()
+            -128, 128, self.in_shape, dtype=np.int8
+        ).flatten()
 
         await self.fixture.write_word('stride', self.stride)
         await self.fixture.write_word('dm', self.dm)
@@ -85,18 +88,21 @@ class DepthwiseConvTest:
     async def run(self, func_ptr: str, timeout_cycles):
         await self.fixture.write_ptr('impl', func_ptr)
         await self.fixture.write(
-            'output_data', np.zeros([self.out_size], dtype=np.int8))
+            'output_data', np.zeros([self.out_size], dtype=np.int8)
+        )
         cycles = await self.fixture.run_to_halt(timeout_cycles=timeout_cycles)
-        outputs = (await self.fixture.read(
-            'output_data', self.out_size)).view(np.int8)
+        outputs = (await self.fixture.read('output_data',
+                                           self.out_size)).view(np.int8)
         return outputs, cycles
 
     async def test(self, ref_target, opt_target):
         ref_output, ref_cycles = await self.run(
-            'run_ref', tolerate(ref_target))
+            'run_ref', tolerate(ref_target)
+        )
         print(f'ref_cycles={ref_cycles}', flush=True)
         opt_output, opt_cycles = await self.run(
-            'run_optimized', tolerate(opt_target))
+            'run_optimized', tolerate(opt_target)
+        )
         print(f'opt_cycles={opt_cycles}', flush=True)
 
         assert (opt_output == ref_output).all()
@@ -105,15 +111,18 @@ class DepthwiseConvTest:
         _, opt_cycles = await self.run('run_optimized', tolerate(opt_target))
         print(f'opt_cycles={opt_cycles}', flush=True)
 
+
 # Tests
 # Cycle count targets come from `-c dbg` runs and are significantly
 # slower than `-c opt` because DCHECKs are enabled.
+
 
 @cocotb.test()
 async def test_dwconv8to8stride1(dut):
     t = DepthwiseConvTest(in_d=8)
     await t.load_and_populate_input(dut)
     await t.test(ref_target=226_000, opt_target=26_600)
+
 
 @cocotb.test()
 async def test_dwconv8to8stride2(dut):
@@ -156,9 +165,11 @@ async def test_dwconv16to32stride2(dut):
     await t.load_and_populate_input(dut)
     await t.test(ref_target=1_010_000, opt_target=41_600)
 
+
 # Benchmarks are skipped by default.
 # Run with COCOTB_TESTCASE=name
 # Cycle count targets here come from `-c opt` runs.
+
 
 @cocotb.test(skip=True)
 async def benchmark_dwconv8to8(dut):

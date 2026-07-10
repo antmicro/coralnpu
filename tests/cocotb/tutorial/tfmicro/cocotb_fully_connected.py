@@ -19,15 +19,19 @@ from coralnpu_test_utils.sim_test_fixture import Fixture
 
 
 class FullyConnectedTester:
+
     def __init__(self, batches, input_depth, output_depth):
         self.batches = batches
         self.input_depth = input_depth
         self.output_depth = output_depth
 
-        self.input_shape = np.array([batches, 1, 1, input_depth], dtype=np.int32)
-        self.filter_shape = np.array([output_depth, 1, 1, input_depth], dtype=np.int32)
+        self.input_shape = np.array([batches, 1, 1, input_depth],
+                                    dtype=np.int32)
+        self.filter_shape = np.array([output_depth, 1, 1, input_depth],
+                                     dtype=np.int32)
         self.bias_shape = np.array([output_depth], dtype=np.int32)
-        self.output_shape = np.array([batches, 1, 1, output_depth], dtype=np.int32)
+        self.output_shape = np.array([batches, 1, 1, output_depth],
+                                     dtype=np.int32)
 
         r = runfiles.Create()
         self.elf_file = r.Rlocation(
@@ -64,18 +68,24 @@ class FullyConnectedTester:
         )
 
         rng = np.random.default_rng()
-        input_data = rng.integers(-128, 128, self.input_shape, dtype=np.int8).flatten()
+        input_data = rng.integers(
+            -128, 128, self.input_shape, dtype=np.int8
+        ).flatten()
         filter_data = rng.integers(
             -128, 128, self.filter_shape, dtype=np.int8
         ).flatten()
-        bias_data = rng.integers(-1000, 1000, self.bias_shape, dtype=np.int32).flatten()
+        bias_data = rng.integers(
+            -1000, 1000, self.bias_shape, dtype=np.int32
+        ).flatten()
 
         await self.fixture.write_word("input_offset", 0)
         await self.fixture.write_word("filter_offset", 0)
         await self.fixture.write_word("output_offset", 0)
         await self.fixture.write_word("output_multiplier", 1073741824)
         # Use write with int32 array for signed values
-        await self.fixture.write("output_shift", np.array([-1], dtype=np.int32))
+        await self.fixture.write(
+            "output_shift", np.array([-1], dtype=np.int32)
+        )
         await self.fixture.write_word("activation_min", -128 & 0xFFFFFFFF)
         await self.fixture.write_word("activation_max", 127)
 
@@ -91,11 +101,13 @@ class FullyConnectedTester:
     async def run(self, func_ptr: str, timeout_cycles):
         await self.fixture.write_ptr("impl", func_ptr)
         await self.fixture.write(
-            "output_data", np.zeros([self.batches * self.output_depth], dtype=np.int8)
+            "output_data",
+            np.zeros([self.batches * self.output_depth], dtype=np.int8)
         )
         await self.fixture.run_to_halt(timeout_cycles=timeout_cycles)
         outputs = (
-            await self.fixture.read("output_data", self.batches * self.output_depth)
+            await
+            self.fixture.read("output_data", self.batches * self.output_depth)
         ).view(np.int8)
 
         data = await self.fixture.read(
@@ -107,7 +119,9 @@ class FullyConnectedTester:
     async def test(self, timeout_cycles=5000000):
         ref_output, ref_cycles = await self.run("run_ref", timeout_cycles)
         print(f"ref_cycles={ref_cycles}", flush=True)
-        opt_output, opt_cycles = await self.run("run_optimized", timeout_cycles)
+        opt_output, opt_cycles = await self.run(
+            "run_optimized", timeout_cycles
+        )
         print(f"opt_cycles={opt_cycles}", flush=True)
         if opt_cycles > 0:
             print(f"speedup={float(ref_cycles) / opt_cycles:.2f}x", flush=True)

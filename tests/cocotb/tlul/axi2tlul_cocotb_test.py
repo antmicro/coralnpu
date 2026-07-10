@@ -74,7 +74,9 @@ async def reset_dut(dut):
     await ClockCycles(dut.clock, 2)
 
 
-async def axi_send_write(dut, address, source, size, data, strb, timeout_cycles=1000):
+async def axi_send_write(
+    dut, address, source, size, data, strb, timeout_cycles=1000
+):
     """Sends an AXI write transaction."""
     dut.io_axi_write_addr_valid.value = 1
     dut.io_axi_write_addr_bits_addr.value = address
@@ -95,10 +97,8 @@ async def axi_send_write(dut, address, source, size, data, strb, timeout_cycles=
 
     for _ in range(timeout_cycles):
         await RisingEdge(dut.clock)
-        if (
-            dut.io_axi_write_addr_ready.value == 1
-            and dut.io_axi_write_data_ready.value == 1
-        ):
+        if (dut.io_axi_write_addr_ready.value == 1
+                and dut.io_axi_write_data_ready.value == 1):
             break
     else:
         raise RuntimeError(f"Timeout waiting for AXI write ready")
@@ -153,7 +153,7 @@ async def test_write_request(dut):
 
     test_addr = random.randint(0, (2**addr_width) - 1)
     test_source = random.randint(0, (2**source_width) - 1)
-    test_data = random.randint(0, (2 ** (data_width_bytes * 8)) - 1)
+    test_data = random.randint(0, (2**(data_width_bytes * 8)) - 1)
     test_strb = (1 << num_bytes) - 1
 
     await axi_send_write(
@@ -171,8 +171,7 @@ async def test_write_request(dut):
     full_mask = (1 << data_width_bytes) - 1
     expected_opcode = (
         TLUL_OpcodeA.PutFullData
-        if test_strb == full_mask
-        else TLUL_OpcodeA.PutPartialData
+        if test_strb == full_mask else TLUL_OpcodeA.PutPartialData
     )
     assert dut.io_tl_a_bits_opcode.value == expected_opcode, (
         f"TL A_OPCODE should be {expected_opcode}"
@@ -237,7 +236,7 @@ async def test_read_request(dut):
 
     test_addr = random.randint(0, (2**addr_width) - 1)
     test_source = random.randint(0, (2**source_width) - 1)
-    test_data = random.randint(0, (2 ** (data_width_bytes * 8)) - 1)
+    test_data = random.randint(0, (2**(data_width_bytes * 8)) - 1)
 
     await axi_send_read(
         dut,
@@ -312,7 +311,7 @@ async def test_read_error(dut):
 
     test_addr = random.randint(0, (2**addr_width) - 1)
     test_source = random.randint(0, (2**source_width) - 1)
-    test_data = random.randint(0, (2 ** (data_width_bytes * 8)) - 1)
+    test_data = random.randint(0, (2**(data_width_bytes * 8)) - 1)
 
     await axi_send_read(
         dut,
@@ -427,7 +426,9 @@ async def test_write_burst(dut):
         while True:
             if dut.io_tl_a_valid.value:
                 assert dut.io_tl_a_bits_opcode.value == TLUL_OpcodeA.PutFullData
-                assert int(dut.io_tl_a_bits_address.value) == test_addr + (beat * 32)
+                assert int(dut.io_tl_a_bits_address.value) == test_addr + (
+                    beat * 32
+                )
                 assert dut.io_tl_a_bits_source.value == test_source
                 break
             await RisingEdge(dut.clock)
@@ -510,7 +511,9 @@ async def test_read_burst(dut):
         while True:
             if dut.io_tl_a_valid.value:
                 assert dut.io_tl_a_bits_opcode.value == TLUL_OpcodeA.Get
-                assert int(dut.io_tl_a_bits_address.value) == test_addr + (beat * 32)
+                assert int(dut.io_tl_a_bits_address.value) == test_addr + (
+                    beat * 32
+                )
                 assert dut.io_tl_a_bits_source.value == test_source
                 break
             await RisingEdge(dut.clock)

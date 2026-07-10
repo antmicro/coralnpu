@@ -18,6 +18,7 @@ import numpy as np
 from bazel_tools.tools.python.runfiles import runfiles
 from coralnpu_test_utils.core_mini_axi_interface import CoreMiniAxiInterface
 
+
 @cocotb.test()
 async def core_mini_axi_tutorial(dut):
     """Testbench to run your CoralNPU program."""

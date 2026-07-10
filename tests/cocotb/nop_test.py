@@ -20,6 +20,7 @@ import cocotb
 from coralnpu_test_utils.sim_test_fixture import Fixture
 from bazel_tools.tools.python.runfiles import runfiles
 
+
 @cocotb.test()
 async def nop_stress_test(dut):
     """Test that runs a loop with 512 NOPs unrolled.
@@ -32,8 +33,8 @@ async def nop_stress_test(dut):
 
     # Load the ELF. We pass an empty list for symbols since we don't need to read/write data.
     await fixture.load_elf_and_lookup_symbols(
-        r.Rlocation('coralnpu_hw/tests/cocotb/' + elf_file),
-        [])
+        r.Rlocation('coralnpu_hw/tests/cocotb/' + elf_file), []
+    )
 
     cycles = await fixture.run_to_halt(timeout_cycles=1000000)
     dut._log.info(f"Cycle count: {cycles}")

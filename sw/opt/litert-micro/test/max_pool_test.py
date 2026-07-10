@@ -26,7 +26,9 @@ def run_test_case(npu_sim, elf_file, input_shape):
         "heartbeat",
     ]
 
-    entry_point, symbol_map = npu_sim.get_elf_entry_and_symbol(elf_file, symbols)
+    entry_point, symbol_map = npu_sim.get_elf_entry_and_symbol(
+        elf_file, symbols
+    )
 
     # Initialize simulator
     npu_sim.load_program(elf_file, entry_point)
@@ -49,7 +51,8 @@ def run_test_case(npu_sim, elf_file, input_shape):
     pad_w = 0
 
     print(
-        f"Running simulation for shape {input_shape} -> {output_shape}...", flush=True
+        f"Running simulation for shape {input_shape} -> {output_shape}...",
+        flush=True
     )
 
     # Generate random input data
@@ -117,7 +120,9 @@ def run_test_case(npu_sim, elf_file, input_shape):
     if opt_cycles > 0:
         print(f"  Speedup: {ref_cycles / opt_cycles:.2f}x")
 
-    opt_out = npu_sim.read_memory(symbol_map.get("output_data"), np.prod(output_shape))
+    opt_out = npu_sim.read_memory(
+        symbol_map.get("output_data"), np.prod(output_shape)
+    )
     opt_out = np.frombuffer(opt_out, dtype=np.int8)
 
     # Verify
@@ -134,7 +139,9 @@ def run_test_case(npu_sim, elf_file, input_shape):
 def run_max_pool_sim_test():
     npu_sim = CoralNPUV2Simulator(highmem_ld=True)
     r = runfiles.Create()
-    elf_file = r.Rlocation("coralnpu_hw/sw/opt/litert-micro/test/max_pool_test.elf")
+    elf_file = r.Rlocation(
+        "coralnpu_hw/sw/opt/litert-micro/test/max_pool_test.elf"
+    )
 
     if not os.path.exists(elf_file):
         raise FileNotFoundError(f"ELF file not found: {elf_file}")

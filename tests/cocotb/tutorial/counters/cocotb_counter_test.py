@@ -23,7 +23,9 @@ from coralnpu_test_utils.sim_test_fixture import Fixture
 async def inst_cycle_counter_test(dut):
     r = runfiles.Create()
     fixture = await Fixture.Create(dut)
-    elf_path = r.Rlocation("coralnpu_hw/tests/cocotb/tutorial/counters/inst_cycle_counter_example.elf")
+    elf_path = r.Rlocation(
+        "coralnpu_hw/tests/cocotb/tutorial/counters/inst_cycle_counter_example.elf"
+    )
     await fixture.load_elf_and_lookup_symbols(
         elf_path,
         ['cycle_count_lo', 'cycle_count_hi', 'inst_count_lo', 'inst_count_hi'],
@@ -31,8 +33,11 @@ async def inst_cycle_counter_test(dut):
     await fixture.run_to_halt()
     cycle_count_lo = (await fixture.read_word('cycle_count_lo')).view(np.int32)
     cycle_count_hi = (await fixture.read_word('cycle_count_hi')).view(np.int32)
-    inst_count_lo =  (await fixture.read_word('inst_count_lo')).view(np.int32)
-    inst_count_hi =  (await fixture.read_word('inst_count_hi')).view(np.int32)
+    inst_count_lo = (await fixture.read_word('inst_count_lo')).view(np.int32)
+    inst_count_hi = (await fixture.read_word('inst_count_hi')).view(np.int32)
     cycle_count = (cycle_count_hi << 32) | cycle_count_lo
     instruction_count = (inst_count_hi << 32) | inst_count_lo
-    print(f" {instruction_count[0]} instructions are executed with {cycle_count[0]} compute cycles", flush=True)
+    print(
+        f" {instruction_count[0]} instructions are executed with {cycle_count[0]} compute cycles",
+        flush=True
+    )

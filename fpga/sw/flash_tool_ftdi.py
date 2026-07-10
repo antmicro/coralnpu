@@ -40,15 +40,22 @@ def main():
         description="Flash tool for FPGA via FTDI (Nexus Loader version)."
     )
     parser.add_argument(
-        "--usb-serial", required=True, help="USB serial number of the FTDI device."
+        "--usb-serial",
+        required=True,
+        help="USB serial number of the FTDI device."
     )
     parser.add_argument(
-        "--ftdi-port", type=int, default=1, help="Port number of the FTDI device."
+        "--ftdi-port",
+        type=int,
+        default=1,
+        help="Port number of the FTDI device."
     )
     parser.add_argument("image", help="Path to the binary image to program.")
     args = parser.parse_args()
 
-    logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
+    logging.basicConfig(
+        level=logging.INFO, format="%(levelname)s: %(message)s"
+    )
 
     if not os.path.exists(args.image):
         logging.error(f"HOST: Error: Image file '{args.image}' not found.")
@@ -59,13 +66,21 @@ def main():
     if not elf_path or not os.path.exists(elf_path):
         elf_path = r.Rlocation("com_google_coralnpu_hw/fpga/flash_tool.elf")
         if not elf_path or not os.path.exists(elf_path):
-            raise FileNotFoundError(f"Could not find flash_tool.elf in runfiles")
+            raise FileNotFoundError(
+                f"Could not find flash_tool.elf in runfiles"
+            )
 
     csr_base_addr = 0x200000  # Required highmem
 
-    logging.info(f"HOST: Loading and starting flash_tool.elf via BinaryRunner...")
+    logging.info(
+        f"HOST: Loading and starting flash_tool.elf via BinaryRunner..."
+    )
     runner = BinaryRunner(
-        elf_path, args.usb_serial, args.ftdi_port, csr_base_addr, exit_after_start=True
+        elf_path,
+        args.usb_serial,
+        args.ftdi_port,
+        csr_base_addr,
+        exit_after_start=True
     )
     runner.run_binary()
 
