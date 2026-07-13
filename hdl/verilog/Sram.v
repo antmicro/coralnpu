@@ -111,6 +111,79 @@ module Sram #(
   always @(posedge clock) rvalid_reg <= enable;
   assign rvalid = rvalid_reg;
 
+`elsif USE_GF12LPP
+  ///////////////////////////
+  //////// GF12LPP SRAM ////////
+  ///////////////////////////
+  // MEM_TCM2048 and MEM_TCM512 macros must be defined at compile/synthesis time
+  wire [127:0] nwmask;
+  genvar i_wmask;
+  generate
+    for (i_wmask = 0; i_wmask < 16; i_wmask = i_wmask + 1) begin : gen_wmask
+      assign nwmask[8*i_wmask+:8] = {8{wmask[i_wmask]}};
+    end
+  endgenerate
+
+  if (NUM_ENTRIES == 2048) begin
+    `MEM_TCM2048 u_sram_lower (
+        .Q(rdata[63:0]),
+        .A(addr),
+        .D(wdata[63:0]),
+        .WEN(nwmask[63:0]),
+        .GWEN(write),
+        .CEN(enable),
+        .CLK(clock),
+        .STOV(1'b0),
+        .EMA(3'b0),
+        .EMAW(2'b0),
+        .EMAS(1'b0),
+        .RET1N(1'b1),
+        .WABL(1'b0),
+        .WABLM(2'b0)
+    );
+    `MEM_TCM2048 u_sram_upper (
+        .Q(rdata[127:64]),
+        .A(addr),
+        .D(wdata[127:64]),
+        .WEN(nwmask[127:64]),
+        .GWEN(write),
+        .CEN(enable),
+        .CLK(clock),
+        .STOV(1'b0),
+        .EMA(3'b0),
+        .EMAW(2'b0),
+        .EMAS(1'b0),
+        .RET1N(1'b1),
+        .WABL(1'b0),
+        .WABLM(2'b0)
+    );
+  end else if (NUM_ENTRIES == 512) begin
+    `MEM_TCM512 u_sram (
+        .Q(rdata),
+        .A(addr),
+        .D(wdata),
+        .WEN(nwmask),
+        .GWEN(write),
+        .CEN(enable),
+        .CLK(clock),
+        .STOV(1'b0),
+        .EMA(3'b0),
+        .EMAW(2'b0),
+        .EMAS(1'b0),
+        .RET1N(1'b1),
+        .WABL(1'b0),
+        .WABLM(2'b0)
+    );
+  end else begin
+    initial begin
+      $error("Unsupported SRAM size for GF12LPP: %d", NUM_ENTRIES);
+    end
+  end
+
+  reg rvalid_reg;
+  always @(posedge clock) rvalid_reg <= enable;
+  assign rvalid = rvalid_reg;
+
 `elsif USE_GF22
   ///////////////////////////
   //////// GF22 SRAM ////////
@@ -172,6 +245,7 @@ module Sram #(
   reg rvalid_reg;
   always @(posedge clock) rvalid_reg <= enable;
   assign rvalid = rvalid_reg;
+
 
 `else
   ///////////////////////////

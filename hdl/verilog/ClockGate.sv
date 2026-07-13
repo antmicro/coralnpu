@@ -35,6 +35,15 @@ module ClockGate (
       .CP(clk_i),
       .Q (clk_o)
   );
+`elsif USE_GF12LPP
+  // GF12 Specific Clockgate
+  // ICG_CELL must be defined at compile time (e.g. via -DICG_CELL=<cell_name>)
+  `ICG_CELL u_clkgate (
+      .ECK(clk_o),
+      .E  (enable),
+      .SE (te),
+      .CK (clk_i)
+  );
 `elsif USE_GF22_116A
   // GF22 116A Specific ClockGate -- MUST BE BEFORE USE_GF22 (USE_GF22 must also be set for SRAMs)
   UDBSLT20_CKGTPLT_V5_8 u_cg (

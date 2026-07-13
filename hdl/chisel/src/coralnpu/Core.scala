@@ -16,7 +16,8 @@ package coralnpu
 
 import chisel3._
 
-import java.io.{File, FileOutputStream}
+import java.io.{File, FileOutputStream, PrintWriter}
+import scala.io.Source
 import java.util.zip._
 import java.nio.file.{Files, Paths, StandardOpenOption}
 import java.nio.charset.StandardCharsets
@@ -205,6 +206,30 @@ object EmitCore extends App {
           chiselArgs.toArray ++ Array("--split-verilog", "--target-dir", targetDir),
           firtoolOpts
         )
+
+        // Post-process split files to wrap verification code in ifndef SYNTHESIS
+        def wrapFileInIfndef(file: File): Unit = {
+          if (file.isFile && file.getName.endsWith(".sv")) {
+            val source  = Source.fromFile(file)
+            val content = try {
+              source.getLines().mkString("\n")
+            } finally {
+              source.close()
+            }
+            val wrappedContent =
+              s"`ifndef SYNTHESIS // Added by Core.scala Verification Wrapper\n\n${content}\n\n`endif // Added by Core.scala Verification Wrapper\n"
+            val writer = new PrintWriter(file)
+            writer.write(wrappedContent)
+            writer.close()
+          } else if (file.isDirectory) {
+            Option(file.listFiles()).foreach(_.foreach(wrapFileInIfndef))
+          }
+        }
+        val verificationDir = new File(targetDir + "/verification")
+        if (verificationDir.exists()) {
+          wrapFileInIfndef(verificationDir)
+        }
+
         val zip = new ZipOutputStream(new FileOutputStream(targetDir + "/" + coreName + ".zip"))
         val dirStack = new Stack[File](1)
         dirStack.push(new File(targetDir))
@@ -226,6 +251,22 @@ object EmitCore extends App {
         zip.close()
       }
 
+      // Regex to match verification blocks in the concatenated Verilog output.
+      // - (^//.*FILE\s*"verification/[^"]+".*$\n) matches the header line of a verification file.
+      // - (?:[\s\S]*?) lazily captures all content up to the next file block.
+      // - (?=\n//.*FILE\s*"|\z) lookahead stops matching before the next file header or at the end of the file.
+      // - (?m) enables multiline mode so ^ and $ match line boundaries.
+      val verificationPattern =
+        """(?m)(^//.*FILE\s*"verification/[^"]+".*$\n(?:[\s\S]*?))(?=\n//.*FILE\s*"|\z)""".r
+      val wrappedVerilogSource = verificationPattern.replaceAllIn(
+        strippedVerilogSource,
+        m => {
+          java.util.regex.Matcher.quoteReplacement(
+            s"`ifndef SYNTHESIS // Added by Core.scala Verification Wrapper\n\n${m.group(1)}\n`endif // Added by Core.scala Verification Wrapper"
+          )
+        }
+      )
+
       Files.write(
         Paths.get(targetDir + "/V" + core.name + "_parameters.h"),
         header_str.getBytes(StandardCharsets.UTF_8),
@@ -233,7 +274,7 @@ object EmitCore extends App {
       )
       Files.write(
         Paths.get(targetDir + "/" + core.name + ".sv"),
-        strippedVerilogSource
+        wrappedVerilogSource
           .replace("exclude_file", "exclude_module")
           .getBytes(StandardCharsets.UTF_8),
         StandardOpenOption.CREATE

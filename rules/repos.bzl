@@ -253,6 +253,7 @@ def cvfpu_repos():
             "@coralnpu_hw//third_party/cvfpu:0003-Fill-in-unreachable-state-in-fpnew_divsqrt_th_32-fsm.patch",
             "@coralnpu_hw//third_party/cvfpu:0004-Remove-ternary-operator-from-pkg-causing-dc-crash.patch",
             "@coralnpu_hw//third_party/cvfpu:0005-Fix-fsm-complete.patch",
+            "@coralnpu_hw//third_party/cvfpu:0006-Fix-syn-tool-compatibility-issues.patch",
         ],
         patch_args = ["-p1"],
     )
