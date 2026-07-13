@@ -12,7 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+load("@rules_pkg//pkg:mappings.bzl", "pkg_files", "strip_prefix")
+
 package(default_visibility = ["//visibility:public"])
+
+pkg_files(
+    name = "cvfpu_files",
+    srcs = [":all_srcs"],
+    strip_prefix = strip_prefix.from_pkg(),
+    visibility = ["//visibility:public"],
+)
 
 filegroup(
     name = "all_srcs",
