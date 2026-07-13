@@ -23,6 +23,6 @@ configure_make(
     visibility = ["//visibility:public"],
     env = {
         # Disable ccache in the sandbox
-        "CCACHE_DISABLE": "1",
+        "CCACHE_DISABLE": 1,
     },
 )

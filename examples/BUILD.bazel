@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-package(default_visibility = ["//visibility:public"])
-
 load("//rules:coralnpu_v2.bzl", "collect_coralnpu_elfs", "coralnpu_v2_binary")
 
 package(default_visibility = ["//visibility:public"])
@@ -29,4 +27,3 @@ coralnpu_v2_binary(
 )
 
 collect_coralnpu_elfs(name = "coralnpu_elfs")
-

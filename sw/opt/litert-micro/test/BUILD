@@ -64,8 +64,5 @@ py_test(
         requirement("numpy"),
     ],
 )
-<<<<<<< HEAD
-=======
 
 collect_coralnpu_elfs(name = "coralnpu_elfs")
->>>>>>> a6c1bb4f (Add Bazel UVM regression tests)

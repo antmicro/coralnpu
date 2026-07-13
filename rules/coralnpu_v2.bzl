@@ -17,6 +17,7 @@ load("//rules:linker.bzl", "generate_linker_script")
 """Rules to build CoralNPU SW objects"""
 
 load("@rules_cc//cc:find_cc_toolchain.bzl", "find_cc_toolchain")
+load("//rules:verilator.bzl", "verilator_batch_uvm_test")
 
 CORALNPU_V2_PLATFORM = "//platforms:coralnpu_v2"
 CORALNPU_V2_SEMIHOSTING_PLATFORM = "//platforms:coralnpu_v2_semihosting"
@@ -351,9 +352,28 @@ def collect_coralnpu_elfs(name, tags = [], visibility = ["//tests/uvm:__pkg__"])
         if r["kind"] == "_coralnpu_v2_binary" and
            r.get("linker_script", "") == ":{}.ld".format(r["name"])
     ]
-    native.filegroup(
-        name = name,
-        srcs = elfs,
-        tags = tags,
-        visibility = visibility,
-    )
+    for elf in elfs:
+        label_name = elf[:-len(".elf")] if elf.endswith(".elf") else elf
+        verilator_batch_uvm_test(
+            name = "verilator_uvm_regression_{}".format(label_name),
+            model = "//tests/uvm:uvm_sim_verilator",
+            coralnpu_tests = [elf],
+            tags = tags + ["verilator-uvm-regression-coral"],
+        )
+
+
+def collect_coralnpu_riscv_tests(tags = [], visibility = ["//tests/uvm:__pkg__"]):
+    elfs = set([
+        elf
+        for r in native.existing_rules().values()
+        if r["kind"] == "configure_make"
+        for elf in r.get("out_binaries", [])
+    ])
+    for elf in elfs:
+        label_name = elf[:-len(".elf")] if elf.endswith(".elf") else elf
+        verilator_batch_uvm_test(
+            name = "verilator_uvm_regression_riscv_tests_{}".format(label_name),
+            model = "//tests/uvm:uvm_sim_verilator",
+            coralnpu_tests = [":{}".format(elf)],
+            tags = [],
+        )

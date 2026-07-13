@@ -96,25 +96,12 @@ def label_to_fname(label: str) -> str:
 
 def build_batch_file(
     batch_path: Path,
-    riscv_dirs: list[Path],
     coralnpu_elfs: list[tuple[Path, str]],
 ) -> TestInfoMap:
     seen: set[Path] = set()
     test_info_map: TestInfoMap = {}
-    riscv_test_elfs = []
     with batch_path.open("w") as batch_file:
-        for directory in riscv_dirs:
-            for elf in sorted(directory.rglob("*")):
-                if not elf.is_file():
-                    continue
-
-                if not is_riscv_test_file(elf.name):
-                    continue
-
-                label = f"//third_party/riscv-tests:{elf.name}"
-                riscv_test_elfs.append((elf, label))
-
-        for elf_path, label in chain(coralnpu_elfs, riscv_test_elfs):
+        for elf_path, label in coralnpu_elfs:
             write_entry(
                 batch_file,
                 elf_path,
@@ -129,17 +116,11 @@ def build_batch_file(
 
 def main():
     r = runfiles.Create()
-
     model_rloc = os.environ["UVM_MODEL_RLOCATION"]
     model = r.Rlocation(model_rloc)
     if not model or not os.path.isfile(model):
         sys.exit("ERROR: model not found: %s" % model_rloc)
 
-    riscv_dirs = [
-        Path(r.Rlocation(p))
-        for p in os.environ.get("UVM_RISCV_DIRS", "").splitlines()
-        if p
-    ]
     coralnpu_elfs = []
     for line in os.environ.get("UVM_CORALNPU_ELFS", "").splitlines():
         rloc, label = line.split("\t")
@@ -151,7 +132,7 @@ def main():
     log_path = results_dir_path / "logs"
     log_path.mkdir()
     regression_log_path = log_path / "regression.log"
-    test_info_map = build_batch_file(batch_path, riscv_dirs, coralnpu_elfs)
+    test_info_map = build_batch_file(batch_path, coralnpu_elfs)
 
     logging.info("Starting UVM regression...")
     cmd = [
@@ -186,13 +167,9 @@ def main():
 
     logging.info(f"Regression PASSED: {len(results)} tests total.")
 
-    shutil.make_archive(
-        base_name=(
-            Path(os.environ.get("TEST_UNDECLARED_OUTPUTS_DIR"))
-            / "uvm_regression_results"
-        ).as_posix(),
-        format="zip",
-        root_dir=results_dir_path.as_posix(),
+    shutil.copytree(
+        results_dir_path.as_posix(),
+        (Path(os.environ.get("TEST_UNDECLARED_OUTPUTS_DIR")) / "uvm_regression_batch").as_posix(),
     )
 
 

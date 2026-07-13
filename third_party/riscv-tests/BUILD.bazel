@@ -13,7 +13,9 @@
 # limitations under the License.
 
 load("@coralnpu_hw//rules:utils.bzl", "template_rule")
+load("@coralnpu_hw//rules:coralnpu_v2.bzl", "collect_coralnpu_riscv_tests")
 load("@rules_foreign_cc//foreign_cc:defs.bzl", "configure_make")
+load("@coralnpu_hw//third_party/riscv-tests:defs.bzl", "OUT_BINARIES_RV32UI", "OUT_BINARIES_RV32UZBB", "OUT_BINARIES_RV32UF", "OUT_BINARIES_RV32UM")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -45,36 +47,28 @@ template_rule(
             "args": COMMON_ARGS + [
                 "RISCV_PREFIX_VAR=rv32ui",
             ],
-            "out_binaries": [
-                "rv32ui-p-addi",
-            ],
+            "out_binaries": ["rv32ui-p-add"],
             "postfix_script": POSTFIX_SCRIPT.format(subset = "ui"),
         },
         "riscv_tests_rv32um": {
             "args": COMMON_ARGS + [
                 "RISCV_PREFIX_VAR=rv32um",
             ],
-            "out_binaries": [
-                "rv32um-p-mul",
-            ],
+            "out_binaries": ["rv32um-p-div"],
             "postfix_script": POSTFIX_SCRIPT.format(subset = "um"),
         },
         "riscv_tests_rv32uzbb": {
             "args": COMMON_ARGS + [
                 "RISCV_PREFIX_VAR=rv32uzbb",
             ],
-            "out_binaries": [
-                "rv32uzbb-p-andn",
-            ],
+            "out_binaries": ["rv32uzbb-p-andn"],
             "postfix_script": POSTFIX_SCRIPT.format(subset = "uzbb"),
         },
         "riscv_tests_rv32uf": {
             "args": COMMON_ARGS + [
                 "RISCV_PREFIX_VAR=rv32uf",
             ],
-            "out_binaries": [
-                "rv32uf-p-fadd",
-            ],
+            "out_binaries": ["rv32uf-p-fadd"],
             "postfix_script": POSTFIX_SCRIPT.format(subset = "uf"),
         },
     },

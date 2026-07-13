@@ -7,7 +7,7 @@ load("@rules_cc//cc/common:cc_info.bzl", "CcInfo")
 load("@rules_hdl//verilator:defs.bzl", "verilator_cc_library")
 load("@rules_hdl//verilog:providers.bzl", "VerilogInfo", "verilog_library")
 load("//rules:utils.bzl", "filter_files_by_extension")
-load("//rules:verilator.bzl", "verilator_model", "verilator_batch_uvm_test")
+load("//rules:verilator.bzl", "verilator_model")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -94,32 +94,25 @@ verilator_model(
     coralnpu_mpact_lib = ":coralnpu_cosim_lib_static_archive",
 )
 
-verilator_batch_uvm_test(
-    name = "uvm_run_regression",
-    model = ":uvm_sim_verilator",
-    riscv_tests = ["//third_party/riscv-tests:all_files"],
-    coralnpu_tests = [
-            "//examples:coralnpu_elfs",
-            "//fpga:coralnpu_elfs",
-            "//hw_sim:coralnpu_elfs",
-            "//sw/opt/litert-micro/test:coralnpu_elfs",
-            "//tests/cocotb/csr_test:coralnpu_elfs",
-            "//tests/cocotb/rvv/ml_ops/static_reference_tests:coralnpu_elfs",
-            "//tests/cocotb:coralnpu_elfs",
-            "//tests/cocotb/coralnpu_isa:coralnpu_elfs",
-            "//tests/cocotb/exceptions:coralnpu_elfs",
-            "//tests/cocotb/freertos_app:coralnpu_elfs",
-            "//tests/cocotb/rvv:coralnpu_elfs",
-            "//tests/cocotb/rvv/arithmetics:coralnpu_elfs",
-            "//tests/cocotb/rvv/load_store:coralnpu_elfs",
-            "//tests/cocotb/rvv/ml_ops:coralnpu_elfs",
-            "//tests/cocotb/rvv/rvv_opt:coralnpu_elfs",
-            "//tests/cocotb/tutorial:coralnpu_elfs",
-            "//tests/cocotb/tutorial/counters:coralnpu_elfs",
-            "//tests/cocotb/tutorial/tfmicro:coralnpu_elfs",
-            "//tests/npusim_examples:coralnpu_elfs",
-            "//tests/verilator_sim:coralnpu_elfs",
-        ],
-    size = "enormous",
-    tags = ["manual"],  # full regression, don't run as part of `bazel test //...`
-)
+CORALNPU_TEST_BINARIES = [
+    "//examples:coralnpu_elfs",
+    "//fpga:coralnpu_elfs",
+    "//hw_sim:coralnpu_elfs",
+    "//sw/opt/litert-micro/test:coralnpu_elfs",
+    "//tests/cocotb/csr_test:coralnpu_elfs",
+    "//tests/cocotb/rvv/ml_ops/static_reference_tests:coralnpu_elfs",
+    "//tests/cocotb:coralnpu_elfs",
+    "//tests/cocotb/coralnpu_isa:coralnpu_elfs",
+    "//tests/cocotb/exceptions:coralnpu_elfs",
+    "//tests/cocotb/freertos_app:coralnpu_elfs",
+    "//tests/cocotb/rvv:coralnpu_elfs",
+    "//tests/cocotb/rvv/arithmetics:coralnpu_elfs",
+    "//tests/cocotb/rvv/load_store:coralnpu_elfs",
+    "//tests/cocotb/rvv/ml_ops:coralnpu_elfs",
+    "//tests/cocotb/rvv/rvv_opt:coralnpu_elfs",
+    "//tests/cocotb/tutorial:coralnpu_elfs",
+    "//tests/cocotb/tutorial/counters:coralnpu_elfs",
+    "//tests/cocotb/tutorial/tfmicro:coralnpu_elfs",
+    "//tests/npusim_examples:coralnpu_elfs",
+    "//tests/verilator_sim:coralnpu_elfs",
+]

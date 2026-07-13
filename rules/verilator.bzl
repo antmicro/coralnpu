@@ -122,11 +122,11 @@ def _verilator_model_impl(ctx):
 
     include_dirs_str = " ".join(["-I" + p.path for p in ctx.files.include_dirs])
 
-    verilator_bin = None
-    for f in ctx.files._verilator:
-        if f.basename == "verilator_bin":
-            verilator_bin = f
-            break
+    verilator_canonical = ctx.executable._verilator_bin.owner.workspace_name
+    verilator_root = "$PWD/{}.runfiles/{}".format(
+        ctx.executable._verilator_bin.path,
+        verilator_canonical,
+    )
 
     verilator_include_dir = None
     for f in ctx.files._verilator:
@@ -148,6 +148,7 @@ def _verilator_model_impl(ctx):
             {include_dirs_str} \
             -LDFLAGS "-lstdc++" \
             -LDFLAGS "-lm" \
+            -CFLAGS "-std=c++20" \
             -I"{uvm_lib_path}/src" \
 	        "{uvm_lib_path}/src/uvm_pkg.sv" \
 	        "{uvm_lib_path}/src/dpi/uvm_dpi.cc" \
@@ -158,8 +159,8 @@ def _verilator_model_impl(ctx):
             {dpi_srcs} \
             {verilog_sources}
     """.strip().split("\n")).format(
-        verilator_root = "$PWD/{}".format(verilator_include_dir.dirname.rsplit("/", 1)[0]),
-        verilator = verilator_bin.path,
+        verilator = ctx.executable._verilator_bin.path,
+        verilator_root = verilator_root,
         outdir = outdir,
         hdl_toplevel = hdl_toplevel,
         include_dirs_str = include_dirs_str,
@@ -185,7 +186,7 @@ def _verilator_model_impl(ctx):
 
     ctx.actions.run_shell(
         outputs = [output_file, make_log],
-        tools = depset([verilator_bin]),
+        tools = ctx.files._verilator_bin,
         inputs = depset(
             [f for f in all_inputs_dict.values()],
             transitive = [
@@ -238,8 +239,14 @@ verilator_model = rule(
             allow_single_file = True,
         ),
         "_verilator": attr.label(
-            default = Label("@verilator-native//:verilator"),
-            allow_files = True,
+            default = "@verilator//:verilator",
+            executable = True,
+            cfg = "exec",
+        ),
+        "_verilator_bin": attr.label(
+            default = "@verilator//:verilator_bin",
+            executable = True,
+            cfg = "exec",
         ),
         "_uvm_lib": attr.label(
             default = "@uvm-verilator//:all_srcs",
@@ -274,8 +281,7 @@ def _verilator_batch_uvm_impl(ctx):
     if not model_binary:
         fail("Model binary could not be found")
 
-    riscv_dirs = [f for f in ctx.files.riscv_tests if f.is_directory]
-    coralnpu_elfs = [f for f in ctx.files.coralnpu_tests if f.extension == "elf"]
+    coralnpu_elfs = [f for f in ctx.files.coralnpu_tests]
 
     spike_bin = None
     for f in ctx.files._spike:
@@ -291,7 +297,7 @@ def _verilator_batch_uvm_impl(ctx):
     ctx.actions.symlink(output = runner, target_file = ctx.executable._runner, is_executable = True)
 
     runfiles = ctx.runfiles(
-        files = riscv_dirs + coralnpu_elfs + [model_binary] + ctx.files._spike,
+        files = coralnpu_elfs + [model_binary] + ctx.files._spike,
         collect_default = True,
     ).merge(ctx.attr._runner[DefaultInfo].default_runfiles)
 
@@ -303,7 +309,6 @@ def _verilator_batch_uvm_impl(ctx):
         RunEnvironmentInfo(
             environment = {
                 "UVM_MODEL_RLOCATION": _rlocation_path(ws, model_binary),
-                "UVM_RISCV_DIRS": "\n".join([_rlocation_path(ws, f) for f in riscv_dirs]),
                 "UVM_CORALNPU_ELFS": "\n".join([
                     "%s\t%s" % (_rlocation_path(ws, f), _label_str(f.owner))
                     for f in coralnpu_elfs
@@ -318,7 +323,6 @@ verilator_batch_uvm_test = rule(
     implementation = _verilator_batch_uvm_impl,
     attrs = {
         "model": attr.label(allow_files = True),
-        "riscv_tests": attr.label_list(allow_files = True),
         "coralnpu_tests": attr.label_list(allow_files = True),
         "_spike": attr.label(
             default = Label("@riscv_isa_sim//:riscv_isa_sim"),
