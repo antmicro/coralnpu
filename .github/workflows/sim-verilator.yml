@@ -7,6 +7,7 @@ on:
       - "*"
     branches:
       - main
+      - verilator-bazel-pr-test
 
 jobs:
   build-verilator:
@@ -24,7 +25,9 @@ jobs:
         run: |
           git clone https://github.com/verilator/verilator
       - name: install dependencies
-        run: ${{ github.workspace }}/verilator/ci/ci-install.bash
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang git autoconf bc bison build-essential help2man curl device-tree-compiler flex libfl-dev fuse3 gawk mold python-is-python3 python3 python3-full python3-pip python3-pyelftools python3-setuptools python3-venv srecord unzip xxd zip openjdk-17-jre z3
       - name:
         run: |
           pushd ${{ github.workspace }}/verilator
@@ -71,7 +74,7 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y git gcc autoconf bc bison build-essential ccache clang curl device-tree-compiler flex fuse3 gawk git mold python-is-python3 python3 python3-full python3-pip python3-pyelftools python3-setuptools python3-venv srecord unzip xxd zip openjdk-17-jre z3
+          sudo apt-get install -y clang git autoconf bc bison build-essential help2man curl device-tree-compiler flex libfl-dev fuse3 gawk mold python-is-python3 python3 python3-full python3-pip python3-pyelftools python3-setuptools python3-venv srecord unzip xxd zip openjdk-17-jre z3
       - name: Clone UVM-1.2
         run: |
           git clone https://github.com/chipsalliance/uvm-verilator.git -b uvm-1.2 ${{ env.CI_TMPDIR }}/uvm-verilator
@@ -123,10 +126,9 @@ jobs:
           sudo apt-get install -y clang git autoconf bc bison build-essential help2man curl device-tree-compiler flex libfl-dev fuse3 gawk mold python-is-python3 python3 python3-full python3-pip python3-pyelftools python3-setuptools python3-venv srecord unzip xxd zip openjdk-17-jre z3 libftdi-dev libftdi1-dev libelf-dev
       - name: Generate RTL and run simulation
         run: |
-          bazel test //tests/uvm:uvm_run_regression --test_output=streamed
+          bazel test $(bazel query 'filter("verilator_uvm_regression_*", tests(//...))')
       - uses: actions/upload-artifact@v7
         with:
           name: uvm_regression_results
-          archive: false
           path: |
-            ${{ github.workspace }}/bazel-out/k8-fastbuild/testlogs/tests/uvm/uvm_run_regression/test.outputs/uvm_regression_results.zip
+            ${{ github.workspace }}/bazel-out/k8-fastbuild/testlogs/**/verilator_uvm_regression_*/test.outputs/uvm_regression_batch/

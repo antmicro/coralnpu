@@ -118,7 +118,7 @@ index ba37573..03d0dbc 100644
  
  
 diff --git a/dependency_support/verilator/verilator.BUILD.bazel b/dependency_support/verilator/verilator.BUILD.bazel
-index f958490..9ce3e12 100644
+index f958490..741b047 100644
 --- a/dependency_support/verilator/verilator.BUILD.bazel
 +++ b/dependency_support/verilator/verilator.BUILD.bazel
 @@ -81,6 +81,47 @@ verilator_build_template(
@@ -138,7 +138,7 @@ index f958490..9ce3e12 100644
 +        "@CFG_WITH_LONGTESTS@": "no",
 +        "@CFG_CXXFLAGS_PROFILE@": "-pg",
 +        "@CFG_CXXFLAGS_STD@": "",
-+        "@CFG_CXXFLAGS_STD_NEWEST@": "-std=c++17",
++        "@CFG_CXXFLAGS_STD_NEWEST@": "-std=c++20",
 +        "@CFG_CXXFLAGS_NO_UNUSED@": " ".join([
 +            "-faligned-new",
 +            "-fcf-protection=none",
@@ -153,14 +153,14 @@ index f958490..9ce3e12 100644
 +            "-Wno-unused-variable",
 +        ]),
 +        "@CFG_CXXFLAGS_WEXTRA@": "-Wextra -Wfloat-conversion -Wlogical-op",
-+        "@CFG_CXXFLAGS_COROUTINES@": "-fcoroutines",
++        "@CFG_CXXFLAGS_COROUTINES@": "-fcoroutines -std=c++20",
 +        "@CFG_CXXFLAGS_PCH@": "-x c++-header",
 +        "@CFG_CXXFLAGS_PCH_I@": "-include",
 +        "@CFG_GCH_IF_CLANG@": "",
 +        "@CFG_LDFLAGS_VERILATED@": "",
-+        "@CFG_LDLIBS_THREADS@": "-lpthread -latomic",
++        "@CFG_LDLIBS_THREADS@": "-lpthread -latomic -lstdc++ -lm",
 +        "@CFG_LDFLAGS_DYNAMIC@": "",
-+        "@CFG_LDLIBS_DYNAMIC@": "-lstdc++ -lm",
++        "@CFG_LDLIBS_DYNAMIC@": "",
 +    },
 +    template = "include/verilated.mk.in",
 +    version = ":version",
@@ -169,7 +169,7 @@ index f958490..9ce3e12 100644
  verilator_astgen(
      name = "verilator_astgen",
      srcs = [
-@@ -287,20 +328,18 @@ cc_library(
+@@ -287,18 +328,15 @@ cc_library(
  )
  
  cc_library(
@@ -190,11 +190,8 @@ index f958490..9ce3e12 100644
 +        "include/verilated_vcd_sc.cpp",
          "include/verilated_vpi.cpp",
          "include/verilated.cpp",
-+        "include/fstcpp/fstcpp_variable_info.cpp",
      ],
-     hdrs = [
-         "include/verilated_config.h",
-@@ -309,17 +348,27 @@ cc_library(
+@@ -309,17 +347,25 @@ cc_library(
          "include/verilated_funcs.h",
          "include/verilated_intrinsics.h",
          "include/verilated_sc.h",
@@ -218,12 +215,10 @@ index f958490..9ce3e12 100644
 +        "include/fstcpp/fstcpp_stream_write_helper.h",
 +        "include/fstcpp/fstcpp_variable_info.h",
 +        "include/fstcpp/fstcpp_writer.h",
-+        "include/fstcpp/fstcpp_variable_info.cpp",
-+        "include/fstcpp/fstcpp_writer.cpp",
      ],
      # TODO: Remove these once upstream fixes these warnings
      copts = [
-@@ -327,18 +376,20 @@ cc_library(
+@@ -327,18 +373,23 @@ cc_library(
          "-std=c++17",
          "-ffp-contract=off",
      ],
@@ -238,12 +233,13 @@ index f958490..9ce3e12 100644
          "-lpthread",
      ],
      strip_include_prefix = "include/",
--    textual_hdrs = [
+     textual_hdrs = [
 -        "include/gtkwave/fastlz.c",
 -        "include/gtkwave/fstapi.c",
 -        "include/gtkwave/lz4.c",
--    ],
-+    textual_hdrs = [],
++        "include/fstcpp/fstcpp_variable_info.cpp",
++        "include/fstcpp/fstcpp_writer.cpp",
+     ],
      visibility = ["//visibility:public"],
      deps = [
 +        "@accellera_systemc//:systemc",
