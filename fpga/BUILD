@@ -787,4 +787,4 @@ genrule(
     cmd = "mkdir -p ispyocto_unpacked && cp -r $(locations @ispyocto//:ispyocto_rtl_files) ispyocto_unpacked/ && touch $@",
 )
 
-collect_coralnpu_elfs(name = "coralnpu_elfs")
+collect_coralnpu_elfs()

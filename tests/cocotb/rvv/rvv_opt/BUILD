@@ -90,4 +90,4 @@ cocotb_test_suite(
     verilator_model = "//tests/cocotb:rvv_core_mini_axi_model",
 )
 
-collect_coralnpu_elfs(name = "coralnpu_elfs")
+collect_coralnpu_elfs()

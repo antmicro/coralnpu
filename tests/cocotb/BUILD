@@ -1009,4 +1009,4 @@ vcs_test_macro_smoke_test(
         "//coralnpu_test_utils:core_mini_axi_sim_interface",
     ],
 )
-collect_coralnpu_elfs(name = "coralnpu_elfs")
+collect_coralnpu_elfs()

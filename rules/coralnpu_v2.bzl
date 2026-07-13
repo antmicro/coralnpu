@@ -335,14 +335,13 @@ def coralnpu_v2_binary(
         tags = tags,
     )
 
-def collect_coralnpu_elfs(name, tags = [], visibility = ["//tests/uvm:__pkg__"]):
-    """Aggregates the .elf filegroup of every coralnpu_v2_binary in this package.
+def collect_coralnpu_elfs(tags = [], visibility = ["//tests/uvm:__pkg__"]):
+    """Generates Verilator UVM regression tests for all `coralnpu_v2_binary` output binaries.
 
     Only includes targets that use the default (per-target) linker script, matching
     the filter applied by utils/run_uvm_regression.py get_targets().
 
     Args:
-      name: The name of the generated filegroup.
       tags: build tags.
       visibility: visibility of the generated filegroup.
     """
@@ -358,11 +357,20 @@ def collect_coralnpu_elfs(name, tags = [], visibility = ["//tests/uvm:__pkg__"])
             name = "verilator_uvm_regression_{}".format(label_name),
             model = "//tests/uvm:uvm_sim_verilator",
             coralnpu_tests = [elf],
-            tags = tags + ["verilator-uvm-regression-coral"],
+            tags = tags + ["verilator-uvm-regression", "verilator-uvm-regression-coralnpu-tests"],
         )
 
 
 def collect_coralnpu_riscv_tests(tags = [], visibility = ["//tests/uvm:__pkg__"]):
+    """Generates Verilator UVM regression tests for all `configure_make` output binaries.
+        
+    Used specifically for third_party/riscv-tests.
+    All tests are tagged for regression execution.
+
+    Args:
+      tags: build tags.
+      visibility: visibility of the generated filegroup.
+    """
     elfs = set([
         elf
         for r in native.existing_rules().values()
@@ -375,5 +383,5 @@ def collect_coralnpu_riscv_tests(tags = [], visibility = ["//tests/uvm:__pkg__"]
             name = "verilator_uvm_regression_riscv_tests_{}".format(label_name),
             model = "//tests/uvm:uvm_sim_verilator",
             coralnpu_tests = [":{}".format(elf)],
-            tags = [],
+            tags = tags + ["verilator-uvm-regression", "verilator-uvm-regression-riscv-tests"],
         )

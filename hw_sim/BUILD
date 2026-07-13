@@ -134,4 +134,4 @@ genrule(
     cmd = "echo '--- external ---' > $@; ls -R external >> $@ 2>&1 || true; echo '--- current ---' >> $@; ls -R . >> $@ 2>&1 || true",
     visibility = ["//visibility:public"],
 )
-collect_coralnpu_elfs(name = "coralnpu_elfs")
+collect_coralnpu_elfs()

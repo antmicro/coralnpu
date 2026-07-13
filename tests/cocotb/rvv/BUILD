@@ -89,4 +89,4 @@ filegroup(
     ],
 )
 
-collect_coralnpu_elfs(name = "coralnpu_elfs")
+collect_coralnpu_elfs()

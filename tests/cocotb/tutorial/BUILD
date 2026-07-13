@@ -132,4 +132,4 @@ generate_cc_arrays(
     out = "hello_world_tflite.h",
 )
 
-collect_coralnpu_elfs(name = "coralnpu_elfs")
+collect_coralnpu_elfs()

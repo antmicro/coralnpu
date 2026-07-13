@@ -67,4 +67,4 @@ coralnpu_v2_binary(
     visibility = ["//visibility:public"],
 )
 
-collect_coralnpu_elfs(name = "coralnpu_elfs")
+collect_coralnpu_elfs()
