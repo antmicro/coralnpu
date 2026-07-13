@@ -209,7 +209,7 @@ cocotb_test_suite(
         "test_conv2d_16x1",
         "test_conv2d_18x1",
         "test_conv2d_37x1_h2w2",
-        "test_conv2d_48x48_h2w2",
+        ("test_conv2d_48x48_h2w2", "large"),
         "test_conv2d_16x3_s2",
         ("test_conv2d_21x48_h8w8", "large"),
         ("test_conv2d_16x16", "enormous"),

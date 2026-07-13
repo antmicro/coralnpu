@@ -300,9 +300,7 @@ RVV_LOAD_STORE_TESTCASES = [
     "store8_seg_unit",
     "store16_seg_unit",
     "store32_seg_unit",
-    # This freezes the core on LSUv2. LSUv3 fixes this.
-    # TODO: enable this.
-    # "load_store8_fault",
+    "load_store8_fault",
     "load_store8_test",
 ]
 # END_TESTCASES_FOR_rvv_load_store_test

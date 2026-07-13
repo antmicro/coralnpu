@@ -63,9 +63,8 @@ class Lsu(p: Parameters) extends Module {
 
 object Lsu {
   def apply(p: Parameters): Lsu = {
-    return Module(new LsuV2(p))
-    // TODO: switch to new LSU
-    // Module(new LsuV3(p))
+    // return Module(new LsuV2(p))
+    Module(new LsuV3(p))
   }
 }
 
