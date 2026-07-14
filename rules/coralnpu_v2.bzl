@@ -399,7 +399,7 @@ def _is_uvm_test_target(rule):
         return False
     return True
 
-def collect_coralnpu_elfs(tags = [], visibility = ["//tests/uvm:__pkg__"]):
+def collect_coralnpu_elfs(tags = []):
     """Generates Verilator UVM regression tests for all `coralnpu_v2_binary` output binaries.
 
     Only includes targets that use the default (per-target) linker script, matching
@@ -407,7 +407,6 @@ def collect_coralnpu_elfs(tags = [], visibility = ["//tests/uvm:__pkg__"]):
 
     Args:
       tags: build tags.
-      visibility: visibility of the generated filegroup.
     """
     for rule in native.existing_rules().values():
         if _is_uvm_test_target(rule):
@@ -421,7 +420,7 @@ def collect_coralnpu_elfs(tags = [], visibility = ["//tests/uvm:__pkg__"]):
             )
 
 
-def collect_coralnpu_riscv_tests(tags = [], visibility = ["//tests/uvm:__pkg__"]):
+def collect_coralnpu_riscv_tests(tags = []):
     """Generates Verilator UVM regression tests for all `configure_make` output binaries.
         
     Used specifically for third_party/riscv-tests.
@@ -429,7 +428,6 @@ def collect_coralnpu_riscv_tests(tags = [], visibility = ["//tests/uvm:__pkg__"]
 
     Args:
       tags: build tags.
-      visibility: visibility of the generated filegroup.
     """
     elfs = set([
         elf
