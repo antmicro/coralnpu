@@ -335,6 +335,70 @@ def coralnpu_v2_binary(
         tags = tags,
     )
 
+# List of targets to exclude from the regression
+DENYLIST = [
+    # Checks mcycle
+    "//tests/cocotb/tutorial/counters:inst_cycle_counter_example",
+    "//tests/cocotb/coralnpu_isa:perf_counters",
+    # Peripherals
+    "//tests/cocotb:timer_interrupt_test",
+    "//tests/cocotb:plic_test",
+    # RVV exceptions, not supported by MPACT (yet)
+    "//tests/cocotb/rvv:vill_test",
+    "//tests/cocotb:vector_store",
+    "//tests/cocotb:vector_store_fault",
+    # Jump to dtcm (also disabled in cocotb)
+    "//third_party/riscv-tests:rv32ui-p-fence_i",
+    "//third_party/riscv-tests:rv32ui-v-fence_i",
+    # Actual RVV bugs?
+    "//tests/cocotb/rvv:vmsif_test",
+    "//tests/cocotb/rvv:vmsbf_test",
+    "//tests/cocotb/rvv/load_store:load_unit_masked",
+    "//tests/cocotb/rvv/load_store:store_unit_masked",
+    "//tests/cocotb/rvv/arithmetics:vmsge_vx_test",
+    # MPACT needs update to canonical-NaN
+    "//tests/cocotb/rvv/arithmetics:rvv_fdiv_float_rdn_m1",
+    "//tests/cocotb/rvv/arithmetics:rvv_fdiv_float_rmm_m1",
+    "//tests/cocotb/rvv/arithmetics:rvv_fdiv_float_rne_m1",
+    "//tests/cocotb/rvv/arithmetics:rvv_fdiv_float_rtz_m1",
+    "//tests/cocotb/rvv/arithmetics:rvv_fdiv_float_rup_m1",
+    "//tests/cocotb/rvv/arithmetics:vfdiv_vf_test_rdn",
+    "//tests/cocotb/rvv/arithmetics:vfdiv_vf_test_rmm",
+    "//tests/cocotb/rvv/arithmetics:vfdiv_vf_test_rne",
+    "//tests/cocotb/rvv/arithmetics:vfdiv_vf_test_rtz",
+    "//tests/cocotb/rvv/arithmetics:vfdiv_vf_test_rup",
+    "//tests/cocotb/rvv/arithmetics:vfrdiv_vf_test_rdn",
+    "//tests/cocotb/rvv/arithmetics:vfrdiv_vf_test_rmm",
+    "//tests/cocotb/rvv/arithmetics:vfrdiv_vf_test_rne",
+    "//tests/cocotb/rvv/arithmetics:vfrdiv_vf_test_rtz",
+    "//tests/cocotb/rvv/arithmetics:vfrdiv_vf_test_rup",
+    # Exclude until MPACT supports the vector bf16 spec.
+    "//tests/cocotb:zvfbf_test",
+    # Exclude all ml_ops tests from regression
+    "//tests/cocotb/rvv/ml_ops:rvv_float_matmul",
+    "//tests/cocotb/rvv/ml_ops:rvv_float_matmul_assembly",
+    "//tests/cocotb/rvv/ml_ops:rvv_float_matmul_optimized",
+    "//tests/cocotb/rvv/ml_ops:rvv_matmul",
+    "//tests/cocotb/rvv/ml_ops:rvv_matmul_assembly",
+    "//tests/cocotb/rvv/ml_ops:rvv_matmul_assembly_highmem",
+    "//tests/cocotb/rvv/ml_ops:rvv_matmul_assembly_itcm512kb_dtcm512kb",
+    "//tests/cocotb/rvv/ml_ops:rvv_matmul_highmem",
+    "//tests/cocotb/rvv/ml_ops:rvv_matmul_itcm512kb_dtcm512kb",
+]
+
+def _is_uvm_test_target(rule):
+    """Predicate for UVM regression test material."""
+
+    # Handle coralnpu_v2_binary binary targets
+    if not rule["kind"] == "_coralnpu_v2_binary":
+        return False
+    if not rule.get("linker_script", "") == ":{}.ld".format(rule["name"]):
+        return False
+    canonical_label = "//{}:{}".format(native.package_name(), rule["name"])
+    if canonical_label in DENYLIST:
+        return False
+    return True
+
 def collect_coralnpu_elfs(tags = [], visibility = ["//tests/uvm:__pkg__"]):
     """Generates Verilator UVM regression tests for all `coralnpu_v2_binary` output binaries.
 
@@ -345,20 +409,16 @@ def collect_coralnpu_elfs(tags = [], visibility = ["//tests/uvm:__pkg__"]):
       tags: build tags.
       visibility: visibility of the generated filegroup.
     """
-    elfs = [
-        "{}.elf".format(r["name"])
-        for r in native.existing_rules().values()
-        if r["kind"] == "_coralnpu_v2_binary" and
-           r.get("linker_script", "") == ":{}.ld".format(r["name"])
-    ]
-    for elf in elfs:
-        label_name = elf[:-len(".elf")] if elf.endswith(".elf") else elf
-        verilator_batch_uvm_test(
-            name = "verilator_uvm_regression_{}".format(label_name),
-            model = "//tests/uvm:uvm_sim_verilator",
-            coralnpu_tests = [elf],
-            tags = tags + ["verilator-uvm-regression", "verilator-uvm-regression-coralnpu-tests"],
-        )
+    for rule in native.existing_rules().values():
+        if _is_uvm_test_target(rule):
+            elf = rule["name"]
+            label_name = elf[:-len(".elf")] if elf.endswith(".elf") else elf
+            verilator_batch_uvm_test(
+                name = "verilator_uvm_regression_{}".format(label_name),
+                model = "//tests/uvm:uvm_sim_verilator",
+                coralnpu_tests = [elf],
+                tags = tags + ["verilator-uvm-regression", "verilator-uvm-regression-coralnpu-tests"],
+            )
 
 
 def collect_coralnpu_riscv_tests(tags = [], visibility = ["//tests/uvm:__pkg__"]):
@@ -379,9 +439,11 @@ def collect_coralnpu_riscv_tests(tags = [], visibility = ["//tests/uvm:__pkg__"]
     ])
     for elf in elfs:
         label_name = elf[:-len(".elf")] if elf.endswith(".elf") else elf
-        verilator_batch_uvm_test(
-            name = "verilator_uvm_regression_riscv_tests_{}".format(label_name),
-            model = "//tests/uvm:uvm_sim_verilator",
-            coralnpu_tests = [":{}".format(elf)],
-            tags = tags + ["verilator-uvm-regression", "verilator-uvm-regression-riscv-tests"],
-        )
+        canonical_label = "//{}:{}".format(native.package_name(),label_name)
+        if canonical_label not in DENYLIST:
+            verilator_batch_uvm_test(
+                name = "verilator_uvm_regression_riscv_tests_{}".format(label_name),
+                model = "//tests/uvm:uvm_sim_verilator",
+                coralnpu_tests = [":{}".format(elf)],
+                tags = tags + ["verilator-uvm-regression", "verilator-uvm-regression-riscv-tests"],
+            )
