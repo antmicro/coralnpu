@@ -3303,12 +3303,46 @@ class LsuV3(p: Parameters) extends Lsu(p) {
   val dbusResp = RegNext(io.dbus.valid && io.dbus.ready, false.B)
 
   val use_ebus = !(itcm || dtcm)
+
+  // Calculate transaction address offset and size from the byte mask.
+  val ebus_wmask  = slot.io.busReq.bits.wmask
+  val ebus_offset = PriorityEncoder(ebus_wmask)
+  val ebus_last   = PriorityEncoder(Reverse(ebus_wmask))
+  val ebus_span   = p.lsuDataBytes.U(p.dbusSize.W) - ebus_last - ebus_offset
+
+  // Constrain transaction size to 1, 2, 4, or full (p.lsuDataBytes).
+  val ebus_size = MuxUpTo1H(
+    ebus_span,
+    Seq(
+      // vector access, empty or wider than 4 bytes.
+      (ebus_wmask === 0.U || ebus_span > 4.U) -> p.lsuDataBytes.U,
+      // 4 bytes in this row but misaligned.
+      (ebus_span === 4.U && (ebus_offset(1, 0) =/= 0.U)) -> p.lsuDataBytes.U,
+      // 3 bytes in this row, crossing word boundary.
+      (ebus_span === 3.U && (ebus_offset(1))) -> p.lsuDataBytes.U,
+      // 3 bytes in this row, not crossing word boundary.
+      (ebus_span === 3.U && (!ebus_offset(1))) -> 4.U,
+      // 2 bytes in this row but misaligned.
+      (ebus_span === 2.U && ebus_offset(0)) -> 4.U
+      // default: ebus_span (1, 2aligned, 4aligned)
+    )
+  )
+
+  // Align the offset down to the chosen size boundary using MuxLookup.
+  val ebus_offset_aligned = MuxLookup(ebus_size, 0.U)(
+    Seq(
+      1.U -> ebus_offset,
+      2.U -> (ebus_offset & ~1.U(ebus_offset.getWidth.W)),
+      4.U -> (ebus_offset & ~3.U(ebus_offset.getWidth.W))
+    )
+  )
+
   io.ebus.dbus.valid := use_ebus && slot.io.busReq.valid
   io.ebus.dbus.write := slot.io.busReq.bits.write
   io.ebus.dbus.pc    := slot.io.pc
-  io.ebus.dbus.addr  := addr             // TODO: limit this
+  io.ebus.dbus.addr  := addr + ebus_offset_aligned
   io.ebus.dbus.adrx  := addr
-  io.ebus.dbus.size  := p.lsuDataBytes.U // TODO: limit this
+  io.ebus.dbus.size  := ebus_size
   io.ebus.dbus.wdata := slot.io.busReq.bits.wdata
   io.ebus.dbus.wmask := slot.io.busReq.bits.wmask
   io.ebus.internal   := peri
