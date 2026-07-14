@@ -541,6 +541,19 @@ class Csr(p: Parameters) extends Module {
     when(tdata1En) { tdata1 := LegalizeTdata1(wdata) }
     when(tdata2En) { tdata2 := wdata }
   }
+  val is_csr_write =
+    req.valid && !(req.bits.op.isOneOf(CsrOp.CSRRS, CsrOp.CSRRC) && req.bits.rs1 === 0.U)
+
+  // TODO: If using 'wdata' creates a critical timing path, optimize by bypassing
+  // directly from 'rs1' using 'req.bits.op' to pre-calculate the new frm value.
+  val frm_bypass = MuxCase(
+    frm,
+    Seq(
+      (frmEn && is_csr_write) -> wdata(2, 0),
+      // Note: bits [7:5] correspond to the frm field in the fcsr CSR layout.
+      (fcsrEn && is_csr_write) -> wdata(7, 5)
+    )
+  )
 
   if (p.enableRvv) {
     io.rvv.get.vstart_write.valid := req.valid && vstartEn.get
@@ -549,11 +562,8 @@ class Csr(p: Parameters) extends Module {
     io.rvv.get.vxrm_write.bits    := wdata(1, 0)
     io.rvv.get.vxsat_write.valid  := req.valid && vxsatEn.get
     io.rvv.get.vxsat_write.bits   := wdata(0)
-    io.rvv.get.frm                := frm
+    io.rvv.get.frm                := frm_bypass
   }
-
-  val is_csr_write =
-    req.valid && !(req.bits.op.isOneOf(CsrOp.CSRRS, CsrOp.CSRRC) && req.bits.rs1 === 0.U)
 
   // mcycle implementation
   // If one of the enable signals for
@@ -681,7 +691,7 @@ class Csr(p: Parameters) extends Module {
   io.bru.out.mtvec := Mux(mtvecEn && req.valid, wdata, mtvec)
 
   if (p.enableFloat) {
-    io.float.get.out.frm := Mux(frmEn && req.valid, wdata(2, 0), frm)
+    io.float.get.out.frm := frm_bypass
   }
 
   io.csr.out.value(0) := io.csr.in.value(12)
@@ -699,10 +709,9 @@ class Csr(p: Parameters) extends Module {
   io.rd.bits.addr := req.bits.addr
   io.rd.bits.data := rdata
 
-  io.trace.valid := req.valid && !(req.bits.op
-    .isOneOf(CsrOp.CSRRS, CsrOp.CSRRC) && req.bits.rs1 === 0.U)
-  io.trace.addr := req.bits.index
-  io.trace.data := wdata
+  io.trace.valid := is_csr_write
+  io.trace.addr  := req.bits.index
+  io.trace.data  := wdata
 
   // Assertions.
   assert(!(req.valid && !io.rs1.valid))

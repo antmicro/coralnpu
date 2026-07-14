@@ -31,6 +31,8 @@ package(default_visibility = ["//visibility:public"])
 
 COCOTB_TEST_BINARY_TARGETS = glob(["**/*.elf"]) + glob(["**/*.o"]) + [
     ":align_test.elf",
+    ":fcsr_frm_hazard_test.elf",
+    ":rvv_frm_hazard_test.elf",
     ":frm_test.elf",
     ":float_csr_interlock_test.elf",
     ":float_hazard_tests.elf",
@@ -119,6 +121,7 @@ CORE_MINI_AXI_SIM_TESTCASES = [
     "core_mini_axi_float_hazard_test",
     "unreachable_prefetch_fault",
     "core_mini_axi_frm_test",
+    "core_mini_axi_fcsr_frm_hazard_test",
     "core_mini_axi_backdoor_load_test",
     "core_mini_axi_minstret_test",
 ]
@@ -144,6 +147,8 @@ RVV_CORE_MINI_AXI_SIM_TESTCASES = [
     "core_mini_axi_float_hazard_test",
     "unreachable_prefetch_fault",
     "core_mini_axi_frm_test",
+    "core_mini_axi_fcsr_frm_hazard_test",
+    "rvv_frm_hazard_test",
     "core_mini_axi_backdoor_load_test",
 ]
 # END_TESTCASES_FOR_rvv_core_mini_axi_sim_cocotb
@@ -564,6 +569,18 @@ coralnpu_v2_binary(
     srcs = [
         "float_hazard_tests.S",
     ],
+)
+
+coralnpu_v2_binary(
+    name = "fcsr_frm_hazard_test",
+    srcs = ["fcsr_frm_hazard_test.cc"],
+    copts = ["-std=c++20"],
+)
+
+coralnpu_v2_binary(
+    name = "rvv_frm_hazard_test",
+    srcs = ["rvv_frm_hazard_test.cc"],
+    copts = ["-std=c++20"],
 )
 
 coralnpu_v2_binary(

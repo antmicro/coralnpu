@@ -609,3 +609,57 @@ async def core_mini_axi_minstret_test(dut):
 
     # We assert strictly equal to 118 (master behavior) to catch timing-fix changes that violate architectural contract.
     assert minstret_val == 118
+
+
+@cocotb.test()
+async def core_mini_axi_fcsr_frm_hazard_test(dut):
+    """Tests the FCSR write to FRM RAW hazard for scalar float."""
+    fixture = await Fixture.Create(dut)
+    r = runfiles.Create()
+
+    await fixture.load_elf_and_lookup_symbols(
+        r.Rlocation("coralnpu_hw/tests/cocotb/fcsr_frm_hazard_test.elf"),
+        ['result', 'faulted', 'mcause', 'mtval'],
+    )
+
+    await fixture.run_to_halt()
+    faulted = (await fixture.read('faulted', 4)).view(np.uint32)[0]
+    result = (await fixture.read('result', 4)).view(np.uint32)[0]
+    dut._log.info(f"FCSR Hazard Test: faulted={faulted}, result={hex(result)}")
+    assert faulted == 0, f"Test faulted with mcause={hex((await fixture.read('mcause', 4)).view(np.uint32)[0])}"
+    assert result == 0x3f800003, f"Expected 0x3f800003 (RUP), got {hex(result)}"
+
+
+@cocotb.test()
+async def rvv_frm_hazard_test(dut):
+    """Tests the FRM/FCSR write to FRM RAW hazard for vector float."""
+    if "Rvv" not in dut._name:
+        dut._log.info("Skipping rvv_frm_hazard_test on non-RVV core")
+        return
+
+    fixture = await Fixture.Create(dut)
+    r = runfiles.Create()
+
+    await fixture.load_elf_and_lookup_symbols(
+        r.Rlocation("coralnpu_hw/tests/cocotb/rvv_frm_hazard_test.elf"),
+        ['result_frm', 'result_fcsr', 'faulted', 'mcause', 'mtval'],
+    )
+
+    await fixture.run_to_halt()
+    faulted = (await fixture.read('faulted', 4)).view(np.uint32)[0]
+    result_frm = (await fixture.read('result_frm', 16)).view(np.uint32)
+    result_fcsr = (await fixture.read('result_fcsr', 16)).view(np.uint32)
+    dut._log.info(f"RVV Hazard Test: faulted={faulted}")
+    dut._log.info(f"result_frm: {[hex(x) for x in result_frm]}")
+    dut._log.info(f"result_fcsr: {[hex(x) for x in result_fcsr]}")
+    assert faulted == 0, f"Test faulted with mcause={hex((await fixture.read('mcause', 4)).view(np.uint32)[0])}"
+
+    # Expected result: all entries should be 0x3f800003 (RUP)
+    # Buggy result: entries will be 0x3f800002 (RNE, stale)
+    for i in range(4):
+        assert result_frm[
+            i
+        ] == 0x3f800003, f"result_frm[{i}] expected 0x3f800003 (RUP), got {hex(result_frm[i])}"
+        assert result_fcsr[
+            i
+        ] == 0x3f800003, f"result_fcsr[{i}] expected 0x3f800003 (RUP), got {hex(result_fcsr[i])}"
