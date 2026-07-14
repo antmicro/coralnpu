@@ -2518,8 +2518,10 @@ class LsuSuperSlot(p: Parameters) extends Module {
       subvectorsTheoretical: UInt,
       elemWidth: UInt,
       indexWidth: UInt,
+      activeCellCount: UInt,
+      offsets: Vec[UInt],
       strict: Bool,
-      write: Boolean
+      write: Bool
     ): State = {
       // TODO: assert
       val elemWidthEnum = MuxLookup(elemWidth, WireInit(LsuVectorElementWidth(), DontCare))(
@@ -2529,18 +2531,31 @@ class LsuSuperSlot(p: Parameters) extends Module {
           "b010".U -> LsuVectorElementWidth.E32
         )
       )
+      val newCells = VecInit.tabulate(nCells) { i =>
+        // TODO: consider vl/vstart
+        val cellIsActive = i.U < activeCellCount
+        MuxUpTo1H(
+          cells(i).initDone(),
+          Seq(
+            // TODO: unmasked loads can skip W_DATA.
+            (cellIsActive && !write) -> cells(i).initLoad(addr + offsets(i), needData = true.B),
+            (cellIsActive && write)  -> cells(i).initVectorStore(addr + offsets(i))
+            // Default: !cellIsActive
+          )
+        )
+      }
       val ret = MakeWireBundle[State](
         new State(),
         _                     -> this,
         _.pc                  -> pc,
-        _.write               -> write.B,
+        _.write               -> write,
         _.faulted             -> false.B,
         _.strictMode          -> strict,
         _.rd                  -> vd,
         _.skipWriteback       -> false.B,
         _.scalarWritebackMode -> LsuScalarWritebackMode.NONE,
-        // cells to be filled by caller
-        _.leadIndex -> 0.U
+        _.cells               -> newCells,
+        _.leadIndex           -> 0.U
       )
       ret.float.foreach { x =>
         x.writeback := false.B
@@ -2593,185 +2608,6 @@ class LsuSuperSlot(p: Parameters) extends Module {
       }
 
       ret
-    }
-
-    def initVectorLoadIndexed(
-      pc: UInt,
-      addr: UInt,
-      vd: UInt,
-      nfields: UInt,
-      dataEmul: UInt,
-      maxVectorPerSegment: UInt,
-      maxVectorPerSegmentOrig: UInt,
-      subvectors: UInt,
-      subvectorsTheoretical: UInt,
-      elemWidth: UInt,
-      indexWidth: UInt,
-      strict: Bool
-    ): State = {
-      // TODO: unmasked can skip W_DATA
-      // TODO: assert
-      val elemWidthEnum = MuxLookup(elemWidth, WireInit(LsuVectorElementWidth(), DontCare))(
-        Seq(
-          "b000".U -> LsuVectorElementWidth.E8,
-          "b001".U -> LsuVectorElementWidth.E16,
-          "b010".U -> LsuVectorElementWidth.E32
-        )
-      )
-      // TODO: assert
-      val initMask = State.makeCellInitializationMaskForVector(
-        nfields = nfields,
-        elemWidth = elemWidthEnum,
-        emul = dataEmul
-      )
-      // Before applying indices, we're basically doing a stride 0 op.
-      val offsets =
-        MuxLookup(Cat(nfields, elemWidth), VecInit.fill(nCells)(WireInit(UInt(32.W), DontCare)))(
-          Seq(
-            // e8
-            "b000_000".U -> State.makeStride0Offsets(1),
-            "b001_000".U -> State.makeStride0Offsets(2),
-            "b010_000".U -> State.makeStride0Offsets(3),
-            "b011_000".U -> State.makeStride0Offsets(4),
-            "b100_000".U -> State.makeStride0Offsets(5),
-            "b101_000".U -> State.makeStride0Offsets(6),
-            "b110_000".U -> State.makeStride0Offsets(7),
-            "b111_000".U -> State.makeStride0Offsets(8),
-            // e16
-            "b000_001".U -> State.makeStride0Offsets(2),
-            "b001_001".U -> State.makeStride0Offsets(4),
-            "b010_001".U -> State.makeStride0Offsets(6),
-            "b011_001".U -> State.makeStride0Offsets(8),
-            "b100_001".U -> State.makeStride0Offsets(10),
-            "b101_001".U -> State.makeStride0Offsets(12),
-            "b110_001".U -> State.makeStride0Offsets(14),
-            "b111_001".U -> State.makeStride0Offsets(16),
-            // e32
-            "b000_010".U -> State.makeStride0Offsets(4),
-            "b001_010".U -> State.makeStride0Offsets(8),
-            "b010_010".U -> State.makeStride0Offsets(12),
-            "b011_010".U -> State.makeStride0Offsets(16),
-            "b100_010".U -> State.makeStride0Offsets(20),
-            "b101_010".U -> State.makeStride0Offsets(24),
-            "b110_010".U -> State.makeStride0Offsets(28),
-            "b111_010".U -> State.makeStride0Offsets(32)
-          )
-        )
-      MakeWireBundle[State](
-        new State(),
-        _ -> initVectorIndexed(
-          pc,
-          addr,
-          vd,
-          nfields,
-          dataEmul,
-          maxVectorPerSegment,
-          maxVectorPerSegmentOrig,
-          subvectors,
-          subvectorsTheoretical,
-          elemWidth,
-          indexWidth,
-          strict,
-          write = false
-        ),
-        _.cells -> VecInit.tabulate(nCells) { i =>
-          Mux(
-            // TODO: consider vl/vstart
-            initMask(i),
-            cells(i).initLoad(addr + offsets(i), needData = true.B),
-            cells(i).initDone()
-          )
-        }
-      )
-    }
-
-    def initVectorStoreIndexed(
-      pc: UInt,
-      addr: UInt,
-      vd: UInt,
-      nfields: UInt,
-      dataEmul: UInt,
-      maxVectorPerSegment: UInt,
-      maxVectorPerSegmentOrig: UInt,
-      subvectors: UInt,
-      subvectorsTheoretical: UInt,
-      elemWidth: UInt,
-      indexWidth: UInt,
-      strict: Bool
-    ): State = {
-      // TODO: assert
-      val elemWidthEnum = MuxLookup(elemWidth, WireInit(LsuVectorElementWidth(), DontCare))(
-        Seq(
-          "b000".U -> LsuVectorElementWidth.E8,
-          "b001".U -> LsuVectorElementWidth.E16,
-          "b010".U -> LsuVectorElementWidth.E32
-        )
-      )
-      // TODO: assert
-      val initMask = State.makeCellInitializationMaskForVector(
-        nfields = nfields,
-        elemWidth = elemWidthEnum,
-        emul = dataEmul
-      )
-      // Before applying indices, we're basically doing a stride 0 op.
-      val offsets =
-        MuxLookup(Cat(nfields, elemWidth), VecInit.fill(nCells)(WireInit(UInt(32.W), DontCare)))(
-          Seq(
-            // e8
-            "b000_000".U -> State.makeStride0Offsets(1),
-            "b001_000".U -> State.makeStride0Offsets(2),
-            "b010_000".U -> State.makeStride0Offsets(3),
-            "b011_000".U -> State.makeStride0Offsets(4),
-            "b100_000".U -> State.makeStride0Offsets(5),
-            "b101_000".U -> State.makeStride0Offsets(6),
-            "b110_000".U -> State.makeStride0Offsets(7),
-            "b111_000".U -> State.makeStride0Offsets(8),
-            // e16
-            "b000_001".U -> State.makeStride0Offsets(2),
-            "b001_001".U -> State.makeStride0Offsets(4),
-            "b010_001".U -> State.makeStride0Offsets(6),
-            "b011_001".U -> State.makeStride0Offsets(8),
-            "b100_001".U -> State.makeStride0Offsets(10),
-            "b101_001".U -> State.makeStride0Offsets(12),
-            "b110_001".U -> State.makeStride0Offsets(14),
-            "b111_001".U -> State.makeStride0Offsets(16),
-            // e32
-            "b000_010".U -> State.makeStride0Offsets(4),
-            "b001_010".U -> State.makeStride0Offsets(8),
-            "b010_010".U -> State.makeStride0Offsets(12),
-            "b011_010".U -> State.makeStride0Offsets(16),
-            "b100_010".U -> State.makeStride0Offsets(20),
-            "b101_010".U -> State.makeStride0Offsets(24),
-            "b110_010".U -> State.makeStride0Offsets(28),
-            "b111_010".U -> State.makeStride0Offsets(32)
-          )
-        )
-      MakeWireBundle[State](
-        new State(),
-        _ -> initVectorIndexed(
-          pc,
-          addr,
-          vd,
-          nfields,
-          dataEmul,
-          maxVectorPerSegment,
-          maxVectorPerSegmentOrig,
-          subvectors,
-          subvectorsTheoretical,
-          elemWidth,
-          indexWidth,
-          strict,
-          write = true
-        ),
-        _.cells -> VecInit.tabulate(nCells) { i =>
-          Mux(
-            // TODO: consider vl/vstart
-            initMask(i),
-            cells(i).initVectorStore(addr + offsets(i)),
-            cells(i).initDone()
-          )
-        }
-      )
     }
 
     def fromUop(uop: LsuUOp) = {
@@ -2833,134 +2669,164 @@ class LsuSuperSlot(p: Parameters) extends Module {
           )
         }
         .getOrElse(0.U)
+
+      val lookupSeqScalar = Seq(
+        LsuOp.LB  -> initIntLoad(uop.pc, uop.addr, uop.rd, bytes = 1, sext = true),
+        LsuOp.LH  -> initIntLoad(uop.pc, uop.addr, uop.rd, bytes = 2, sext = true),
+        LsuOp.LW  -> initIntLoad(uop.pc, uop.addr, uop.rd, bytes = 4, sext = false),
+        LsuOp.LBU -> initIntLoad(uop.pc, uop.addr, uop.rd, bytes = 1, sext = false),
+        LsuOp.LHU -> initIntLoad(uop.pc, uop.addr, uop.rd, bytes = 2, sext = false),
+        LsuOp.SB  -> initIntStore(uop.pc, uop.addr, uop.data, bytes = 1),
+        LsuOp.SH  -> initIntStore(uop.pc, uop.addr, uop.data, bytes = 2),
+        LsuOp.SW  -> initIntStore(uop.pc, uop.addr, uop.data, bytes = 4)
+        // val FENCEI = Value
+        // val FLUSHAT = Value
+        // val FLUSHALL = Value
+        // val VLDST = Value
+      )
+      val lookupSeqFloat =
+        if (p.enableFloat)
+          Seq(
+            LsuOp.FLOAT -> Mux(
+              uop.store,
+              initFloatStore(uop.pc, uop.addr, uop.data, bytes = 4),
+              initFloatLoad(uop.pc, uop.addr, uop.rd, bytes = 4)
+            )
+          )
+        else Seq()
+      val lookupSeqVector = if (p.enableRvv) {
+        val indexedElemWidthEnum =
+          MuxLookup(uop.sew.getOrElse(0.U), WireInit(LsuVectorElementWidth(), DontCare))(
+            Seq(
+              "b000".U -> LsuVectorElementWidth.E8,
+              "b001".U -> LsuVectorElementWidth.E16,
+              "b010".U -> LsuVectorElementWidth.E32
+            )
+          )
+        val activeCellCount = State.countActiveVectorCells(
+          nfields = nfields,
+          elemWidth = indexedElemWidthEnum,
+          emul = uop.emul_data.getOrElse(0.U)
+        )
+        // Before applying indices, we're basically doing a stride 0 op.
+        val indexedOffsets = MuxLookup(
+          Cat(nfields, uop.sew.getOrElse(0.U)),
+          VecInit.fill(nCells)(WireInit(UInt(32.W), DontCare))
+        )(
+          Seq(
+            // e8
+            "b000_000".U -> State.makeStride0Offsets(1),
+            "b001_000".U -> State.makeStride0Offsets(2),
+            "b010_000".U -> State.makeStride0Offsets(3),
+            "b011_000".U -> State.makeStride0Offsets(4),
+            "b100_000".U -> State.makeStride0Offsets(5),
+            "b101_000".U -> State.makeStride0Offsets(6),
+            "b110_000".U -> State.makeStride0Offsets(7),
+            "b111_000".U -> State.makeStride0Offsets(8),
+            // e16
+            "b000_001".U -> State.makeStride0Offsets(2),
+            "b001_001".U -> State.makeStride0Offsets(4),
+            "b010_001".U -> State.makeStride0Offsets(6),
+            "b011_001".U -> State.makeStride0Offsets(8),
+            "b100_001".U -> State.makeStride0Offsets(10),
+            "b101_001".U -> State.makeStride0Offsets(12),
+            "b110_001".U -> State.makeStride0Offsets(14),
+            "b111_001".U -> State.makeStride0Offsets(16),
+            // e32
+            "b000_010".U -> State.makeStride0Offsets(4),
+            "b001_010".U -> State.makeStride0Offsets(8),
+            "b010_010".U -> State.makeStride0Offsets(12),
+            "b011_010".U -> State.makeStride0Offsets(16),
+            "b100_010".U -> State.makeStride0Offsets(20),
+            "b101_010".U -> State.makeStride0Offsets(24),
+            "b110_010".U -> State.makeStride0Offsets(28),
+            "b111_010".U -> State.makeStride0Offsets(32)
+          )
+        )
+        def indexedInitFunc(strict: Bool, write: Bool) = {
+          initVectorIndexed(
+            pc = uop.pc,
+            addr = uop.addr,
+            vd = uop.rd,
+            nfields = nfields,
+            dataEmul = uop.emul_data.getOrElse(0.U),
+            maxVectorPerSegment = maxVectorPerSegment,
+            maxVectorPerSegmentOrig = maxVectorPerSegmentOrig,
+            subvectors = subvectors,
+            subvectorsTheoretical = subvectorsTheoretical,
+            elemWidth = uop.sew.getOrElse(0.U),
+            indexWidth = elemWidth,
+            activeCellCount = activeCellCount,
+            offsets = indexedOffsets,
+            strict = strict,
+            write = write
+          )
+        }
+        Seq(
+          // Vector instructions.
+          // TODO: consider vstart and vl here
+          LsuOp.VLOAD_UNIT -> initVectorLoadUS(
+            pc = uop.pc,
+            addr = uop.addr,
+            vd = uop.rd,
+            nfields = nfields,
+            maxVectorPerSegment = maxVectorPerSegment,
+            maxVectorPerSegmentOrig = maxVectorPerSegmentOrig,
+            elemWidth = elemWidth
+          ),
+          LsuOp.VLOAD_STRIDED -> initVectorLoadCS(
+            pc = uop.pc,
+            addr = uop.addr,
+            vd = uop.rd,
+            nfields = nfields,
+            maxVectorPerSegment = maxVectorPerSegment,
+            maxVectorPerSegmentOrig = maxVectorPerSegmentOrig,
+            elemWidth = elemWidth,
+            stride = uop.data,
+            strict = uop.strict.getOrElse(false.B)
+          ),
+          LsuOp.VLOAD_OINDEXED -> indexedInitFunc(
+            strict = true.B,
+            write = false.B
+          ),
+          LsuOp.VLOAD_UINDEXED -> indexedInitFunc(
+            strict = false.B,
+            write = false.B
+          ),
+          LsuOp.VSTORE_UNIT -> initVectorStoreUS(
+            uop.pc,
+            uop.addr,
+            uop.rd,
+            nfields = nfields,
+            maxVectorPerSegment = maxVectorPerSegment,
+            maxVectorPerSegmentOrig = maxVectorPerSegmentOrig,
+            elemWidth = elemWidth
+          ),
+          LsuOp.VSTORE_STRIDED -> initVectorStoreCS(
+            pc = uop.pc,
+            addr = uop.addr,
+            vd = uop.rd,
+            nfields = nfields,
+            maxVectorPerSegment = maxVectorPerSegment,
+            maxVectorPerSegmentOrig = maxVectorPerSegmentOrig,
+            elemWidth = elemWidth,
+            stride = uop.data,
+            strict = uop.strict.getOrElse(false.B)
+          ),
+          LsuOp.VSTORE_OINDEXED -> indexedInitFunc(
+            strict = true.B,
+            write = true.B
+          ),
+          LsuOp.VSTORE_UINDEXED -> indexedInitFunc(
+            strict = false.B,
+            write = true.B
+          )
+        )
+      } else Seq()
       // TODO: default value?
       // TODO: assert vector elemWidth legal
       MuxLookup(uop.op, this)(
-        Seq(
-          LsuOp.LB  -> initIntLoad(uop.pc, uop.addr, uop.rd, bytes = 1, sext = true),
-          LsuOp.LH  -> initIntLoad(uop.pc, uop.addr, uop.rd, bytes = 2, sext = true),
-          LsuOp.LW  -> initIntLoad(uop.pc, uop.addr, uop.rd, bytes = 4, sext = false),
-          LsuOp.LBU -> initIntLoad(uop.pc, uop.addr, uop.rd, bytes = 1, sext = false),
-          LsuOp.LHU -> initIntLoad(uop.pc, uop.addr, uop.rd, bytes = 2, sext = false),
-          LsuOp.SB  -> initIntStore(uop.pc, uop.addr, uop.data, bytes = 1),
-          LsuOp.SH  -> initIntStore(uop.pc, uop.addr, uop.data, bytes = 2),
-          LsuOp.SW  -> initIntStore(uop.pc, uop.addr, uop.data, bytes = 4)
-          // val FENCEI = Value
-          // val FLUSHAT = Value
-          // val FLUSHALL = Value
-          // val VLDST = Value
-        ) ++ (if (p.enableFloat)
-                Seq(
-                  LsuOp.FLOAT -> Mux(
-                    uop.store,
-                    initFloatStore(uop.pc, uop.addr, uop.data, bytes = 4),
-                    initFloatLoad(uop.pc, uop.addr, uop.rd, bytes = 4)
-                  )
-                )
-              else Seq()) ++ (if (p.enableRvv)
-                                Seq(
-                                  // Vector instructions.
-                                  // TODO: omit these for scalar core?
-                                  // TODO: seq
-                                  // TODO: consider vstart and vl here
-                                  LsuOp.VLOAD_UNIT -> initVectorLoadUS(
-                                    pc = uop.pc,
-                                    addr = uop.addr,
-                                    vd = uop.rd,
-                                    nfields = nfields,
-                                    maxVectorPerSegment = maxVectorPerSegment,
-                                    maxVectorPerSegmentOrig = maxVectorPerSegmentOrig,
-                                    elemWidth = elemWidth
-                                  ),
-                                  LsuOp.VLOAD_STRIDED -> initVectorLoadCS(
-                                    pc = uop.pc,
-                                    addr = uop.addr,
-                                    vd = uop.rd,
-                                    nfields = nfields,
-                                    maxVectorPerSegment = maxVectorPerSegment,
-                                    maxVectorPerSegmentOrig = maxVectorPerSegmentOrig,
-                                    elemWidth = elemWidth,
-                                    stride = uop.data,
-                                    strict = uop.strict.getOrElse(false.B)
-                                  ),
-                                  LsuOp.VLOAD_OINDEXED -> initVectorLoadIndexed(
-                                    pc = uop.pc,
-                                    addr = uop.addr,
-                                    vd = uop.rd,
-                                    nfields = nfields,
-                                    dataEmul = uop.emul_data.getOrElse(0.U),
-                                    maxVectorPerSegment = maxVectorPerSegment,
-                                    maxVectorPerSegmentOrig = maxVectorPerSegmentOrig,
-                                    subvectors = subvectors,
-                                    subvectorsTheoretical = subvectorsTheoretical,
-                                    elemWidth = uop.sew.getOrElse(0.U),
-                                    indexWidth = elemWidth,
-                                    strict = true.B
-                                  ),
-                                  LsuOp.VLOAD_UINDEXED -> initVectorLoadIndexed(
-                                    pc = uop.pc,
-                                    addr = uop.addr,
-                                    vd = uop.rd,
-                                    nfields = nfields,
-                                    dataEmul = uop.emul_data.getOrElse(0.U),
-                                    maxVectorPerSegment = maxVectorPerSegment,
-                                    maxVectorPerSegmentOrig = maxVectorPerSegmentOrig,
-                                    subvectors = subvectors,
-                                    subvectorsTheoretical = subvectorsTheoretical,
-                                    elemWidth = uop.sew.getOrElse(0.U),
-                                    indexWidth = elemWidth,
-                                    strict = false.B
-                                  ),
-                                  LsuOp.VSTORE_UNIT -> initVectorStoreUS(
-                                    uop.pc,
-                                    uop.addr,
-                                    uop.rd,
-                                    nfields = nfields,
-                                    maxVectorPerSegment = maxVectorPerSegment,
-                                    maxVectorPerSegmentOrig = maxVectorPerSegmentOrig,
-                                    elemWidth = elemWidth
-                                  ),
-                                  LsuOp.VSTORE_STRIDED -> initVectorStoreCS(
-                                    pc = uop.pc,
-                                    addr = uop.addr,
-                                    vd = uop.rd,
-                                    nfields = nfields,
-                                    maxVectorPerSegment = maxVectorPerSegment,
-                                    maxVectorPerSegmentOrig = maxVectorPerSegmentOrig,
-                                    elemWidth = elemWidth,
-                                    stride = uop.data,
-                                    strict = uop.strict.getOrElse(false.B)
-                                  ),
-                                  LsuOp.VSTORE_OINDEXED -> initVectorStoreIndexed(
-                                    pc = uop.pc,
-                                    addr = uop.addr,
-                                    vd = uop.rd,
-                                    nfields = nfields,
-                                    dataEmul = uop.emul_data.getOrElse(0.U),
-                                    maxVectorPerSegment = maxVectorPerSegment,
-                                    maxVectorPerSegmentOrig = maxVectorPerSegmentOrig,
-                                    subvectors = subvectors,
-                                    subvectorsTheoretical = subvectorsTheoretical,
-                                    elemWidth = uop.sew.getOrElse(0.U),
-                                    indexWidth = elemWidth,
-                                    strict = true.B
-                                  ),
-                                  LsuOp.VSTORE_UINDEXED -> initVectorStoreIndexed(
-                                    pc = uop.pc,
-                                    addr = uop.addr,
-                                    vd = uop.rd,
-                                    nfields = nfields,
-                                    dataEmul = uop.emul_data.getOrElse(0.U),
-                                    maxVectorPerSegment = maxVectorPerSegment,
-                                    maxVectorPerSegmentOrig = maxVectorPerSegmentOrig,
-                                    subvectors = subvectors,
-                                    subvectorsTheoretical = subvectorsTheoretical,
-                                    elemWidth = uop.sew.getOrElse(0.U),
-                                    indexWidth = elemWidth,
-                                    strict = false.B
-                                  )
-                                )
-                              else Seq())
+        lookupSeqScalar ++ lookupSeqFloat ++ lookupSeqVector
       )
     }
   }
@@ -3003,7 +2869,7 @@ class LsuSuperSlot(p: Parameters) extends Module {
       ret
     }
 
-    def makeCellInitializationMaskForVector(
+    def countActiveVectorCells(
       nfields: UInt,
       elemWidth: LsuVectorElementWidth.Type,
       emul: UInt
@@ -3041,12 +2907,7 @@ class LsuSuperSlot(p: Parameters) extends Module {
           LsuVectorElementWidth.E32 -> ((nfields +& 1.U) << 2.U)
         )
       )
-      // TODO: tighten this bit of logic into one big lookup maybe
-      VecInit
-        .tabulate(nCells) { i =>
-          i.U < nStructs * structBytes
-        }
-        .asUInt
+      nStructs * structBytes
     }
 
     // Indices of cells that will receive vector data on the first data cycle
