@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 #
+# This script acts as a backend for running UVM regression tests using Bazel
+#
 # Env vars (set by the verilator_batch_uvm_test rule):
 #   UVM_MODEL_RLOCATION: rlocation path of the model binary
 #   UVM_RISCV_DIRS: newline-separated rlocation paths of riscv-tests directories

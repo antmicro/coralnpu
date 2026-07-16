@@ -329,7 +329,7 @@ verilator_batch_uvm_test = rule(
             allow_files = True,
         ),
         "_runner": attr.label(
-            default = Label("//rules:uvm_batch_runner"),
+            default = Label("//utils:uvm_batch_runner"),
             executable = True,
             cfg = "target",
         ),

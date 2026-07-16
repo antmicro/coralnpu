@@ -49,3 +49,12 @@ py_test(
     ],
     main = "check_macro_signatures.py",
 )
+
+py_binary(
+    name = "uvm_batch_runner",
+    srcs = ["uvm_batch_runner.py"],
+    deps = [
+        ":run_uvm_regression",
+        "@bazel_tools//tools/python/runfiles",
+    ],
+)

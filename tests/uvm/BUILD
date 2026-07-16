@@ -93,26 +93,3 @@ verilator_model(
     deps = [":include_dirs_deps", "//hdl/verilog:dpi_files"],
     coralnpu_mpact_lib = ":coralnpu_cosim_lib_static_archive",
 )
-
-CORALNPU_TEST_BINARIES = [
-    "//examples:coralnpu_elfs",
-    "//fpga:coralnpu_elfs",
-    "//hw_sim:coralnpu_elfs",
-    "//sw/opt/litert-micro/test:coralnpu_elfs",
-    "//tests/cocotb/csr_test:coralnpu_elfs",
-    "//tests/cocotb/rvv/ml_ops/static_reference_tests:coralnpu_elfs",
-    "//tests/cocotb:coralnpu_elfs",
-    "//tests/cocotb/coralnpu_isa:coralnpu_elfs",
-    "//tests/cocotb/exceptions:coralnpu_elfs",
-    "//tests/cocotb/freertos_app:coralnpu_elfs",
-    "//tests/cocotb/rvv:coralnpu_elfs",
-    "//tests/cocotb/rvv/arithmetics:coralnpu_elfs",
-    "//tests/cocotb/rvv/load_store:coralnpu_elfs",
-    "//tests/cocotb/rvv/ml_ops:coralnpu_elfs",
-    "//tests/cocotb/rvv/rvv_opt:coralnpu_elfs",
-    "//tests/cocotb/tutorial:coralnpu_elfs",
-    "//tests/cocotb/tutorial/counters:coralnpu_elfs",
-    "//tests/cocotb/tutorial/tfmicro:coralnpu_elfs",
-    "//tests/npusim_examples:coralnpu_elfs",
-    "//tests/verilator_sim:coralnpu_elfs",
-]

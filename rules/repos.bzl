@@ -131,8 +131,8 @@ def coralnpu_repos2():
     )
     http_archive(
         name = "rules_hdl",
-        strip_prefix = "bazel_rules_hdl-7a1ba0e8d229200b4628e8a676917fc6b8e165d1",
         sha256 = "1b560fe7d4100486784d6f2329e82a63dd37301e185ba77d0fd69b3ecc299649",
+        strip_prefix = "bazel_rules_hdl-7a1ba0e8d229200b4628e8a676917fc6b8e165d1",
         urls = [
             "https://github.com/hdl/bazel_rules_hdl/archive/7a1ba0e8d229200b4628e8a676917fc6b8e165d1.tar.gz",
         ],
@@ -166,13 +166,9 @@ def coralnpu_repos2():
 
     http_archive(
         name = "rules_foreign_cc",
-        sha256 = "32759728913c376ba45b0116869b71b68b1c2ebf8f2bcf7b41222bc07b773d73",
-        strip_prefix = "rules_foreign_cc-0.15.1",
-        url = "https://github.com/bazel-contrib/rules_foreign_cc/releases/download/0.15.1/rules_foreign_cc-0.15.1.tar.gz",
-        patches = [
-            "@coralnpu_hw//third_party/rules_foreign_cc:rules-foreign-cc-features-struct.patch",
-        ],
-        patch_args = ["-p1"],
+        sha256 = "2a4d07cd64b0719b39a7c12218a3e507672b82a97b98c6a89d38565894cf7c51",
+        strip_prefix = "rules_foreign_cc-0.9.0",
+        url = "https://github.com/bazelbuild/rules_foreign_cc/archive/refs/tags/0.9.0.tar.gz",
     )
 
     http_archive(
@@ -356,14 +352,6 @@ def mpact_repos():
     )
 
 def uvm_verilator_repos():
-    verilator_commit = "58bd13b623dbb1a8db231aba7d68b07baf0f3d4f"
-    git_repository(
-        name = "verilator-native",
-        remote = "https://github.com/verilator/verilator",
-        commit = verilator_commit,
-        build_file = "@coralnpu_hw//third_party:verilator.BUILD",
-    )
-
     git_repository(
         name = "uvm-verilator",
         remote = "https://github.com/chipsalliance/uvm-verilator",
