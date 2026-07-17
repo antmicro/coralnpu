@@ -92,18 +92,18 @@ def label_to_fname(label: str) -> str:
 
 
 def build_batch_file(
-    batch_path: Path, coralnpu_elfs: list[tuple[Path, str, int]], spike: Optional[str]
+    batch_path: Path, coralnpu_elfs: list[tuple[Path, str, int, bool]], spike: Optional[str]
 ) -> TestInfoMap:
     test_info_map: TestInfoMap = {}
     with batch_path.open("w") as batch_file:
-        for elf_path, label, timeout in coralnpu_elfs:
+        for elf_path, label, timeout, enable_spike in coralnpu_elfs:
             write_entry(
                 batch_file,
                 elf_path,
                 f"{label_to_fname(label)}.log",
                 label,
                 timeout,
-                spike,
+                spike if enable_spike else None,
                 test_info_map,
             )
 
@@ -122,8 +122,8 @@ def main():
 
     coralnpu_elfs = []
     for line in os.environ.get("UVM_CORALNPU_ELFS", "").splitlines():
-        rloc, label, timeout = line.split("\t")
-        coralnpu_elfs.append((Path(r.Rlocation(rloc)), label, int(timeout)))
+        rloc, label, timeout, enable_spike = line.split("\t")
+        coralnpu_elfs.append((Path(r.Rlocation(rloc)), label, int(timeout), enable_spike == "True"))
 
     results_tmp = tempfile.TemporaryDirectory()
     results_dir_path = Path(results_tmp.name)

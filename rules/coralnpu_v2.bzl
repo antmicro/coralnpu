@@ -395,12 +395,12 @@ TIMEOUT_MAP = {
     "//examples:coralnpu_v2_rvv_add_intrinsic": 200000,
 }
 
-def _get_canonical_name(rule):
+def _get_canonical_name(target_name):
     """Gets full canonical target name for rule.
 
        Example: registers in tests/cocotb package returns "//tests/cocotb:registers"
     """
-    return "//{}:{}".format(native.package_name(), rule["name"])
+    return "//{}:{}".format(native.package_name(), target_name)
 
 def _is_uvm_test_target(rule):
     """Predicate for UVM regression test material."""
@@ -410,7 +410,7 @@ def _is_uvm_test_target(rule):
         return False
     if not rule.get("linker_script", "") == ":{}.ld".format(rule["name"]):
         return False
-    canonical_label = _get_canonical_name(rule)
+    canonical_label = _get_canonical_name(rule["name"])
     if canonical_label in DENYLIST or canonical_label.startswith("//internal/kernels"):
         return False
     return True
@@ -428,12 +428,13 @@ def collect_coralnpu_elfs(tags = []):
         if _is_uvm_test_target(rule):
             elf = "{}.elf".format(rule["name"]) if not rule["name"].endswith(".elf") else rule["name"]
             label_name = rule["name"] 
-            canonical_label = _get_canonical_name(rule)
+            canonical_label = _get_canonical_name(rule["name"])
             verilator_batch_uvm_test(
                 name = "verilator_uvm_regression_{}".format(label_name),
                 model = "//tests/uvm:uvm_sim_verilator",
                 coralnpu_tests = [elf],
                 timeouts = [TIMEOUT_MAP.get(canonical_label, 100000)],
+                labels = [canonical_label],
                 run_spike = "//rules:uvm_run_spike_cosim",
                 tags = tags + ["verilator-uvm-regression", "verilator-uvm-regression-coralnpu-tests"],
             )
@@ -451,13 +452,14 @@ def collect_coralnpu_riscv_tests(binaries = [], tags = []):
     """
     for elf in set(binaries):
         label_name = elf[:-len(".elf")] if elf.endswith(".elf") else elf
-        canonical_label = "//{}:{}".format(native.package_name(), label_name)
+        canonical_label = _get_canonical_name(label_name)
         if canonical_label not in DENYLIST:
             verilator_batch_uvm_test(
                 name = "verilator_uvm_regression_riscv_tests_{}".format(label_name),
                 model = "//tests/uvm:uvm_sim_verilator",
                 coralnpu_tests = [":{}".format(elf)],
                 timeouts = [TIMEOUT_MAP.get(canonical_label, 100000)],
+                labels = [canonical_label],
                 run_spike = "//rules:uvm_run_spike_cosim",
                 tags = tags + ["verilator-uvm-regression", "verilator-uvm-regression-riscv-tests"],
             )

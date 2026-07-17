@@ -28,7 +28,7 @@ exports_files([
 ])
 
 # Enable Spike co-simulation for UVM tests
-# specifying --//:uvm_run_spike_cosim=true
+# specifying --//rules:uvm_run_spike_cosim=true
 bool_flag(
     name = "uvm_run_spike_cosim",
     build_setting_default = False,

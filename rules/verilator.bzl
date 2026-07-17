@@ -283,12 +283,6 @@ def _rlocation_path(ws, f):
         return f.short_path[len("../"):]
     return ws + "/" + f.short_path
 
-def _label_str(label):
-    s = str(label)
-    if s.startswith("@//"):
-        return s[1:]
-    return s
-
 def _verilator_batch_uvm_impl(ctx):
     runfiles = []
     run_spike_flag = ctx.attr.run_spike[BuildSettingInfo].value
@@ -323,8 +317,12 @@ def _verilator_batch_uvm_impl(ctx):
     ctx.actions.symlink(output = runner, target_file = ctx.executable._runner, is_executable = True)
 
     coralnpu_elfs_fmt = []
-    for f, t in zip(ctx.files.coralnpu_tests, ctx.attr.timeouts):
-        coralnpu_elfs_fmt.append("{}\t{}\t{}".format(_rlocation_path(ws, f), _label_str(f.owner), t))
+    for file, label, timeout in zip(ctx.files.coralnpu_tests, ctx.attr.labels, ctx.attr.timeouts):
+        enable_spike = run_spike_flag
+        if enable_spike and label in SPIKE_DENYLIST:
+            print("Warning: skipping spike cosim for {}, because it is listed in SPIKE_DENYLIST".format(label))
+            enable_spike = False
+        coralnpu_elfs_fmt.append("{}\t{}\t{}\t{}".format(_rlocation_path(ws, file), label, timeout, enable_spike))
 
     return [
         DefaultInfo(
@@ -350,6 +348,7 @@ verilator_batch_uvm_test = rule(
         "model": attr.label(allow_files = True),
         "coralnpu_tests": attr.label_list(allow_files = True),
         "timeouts": attr.int_list(mandatory = True),
+        "labels": attr.string_list(mandatory = True),
         "run_spike": attr.label(
             providers = [BuildSettingInfo],
         ),
