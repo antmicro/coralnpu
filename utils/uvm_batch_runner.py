@@ -82,7 +82,7 @@ def write_entry(
         tohost=tohost,
         entry=entry,
         timeout=timeout,
-        spike=spike_log,
+        spike_log=spike_log,
         safe_log=log_name,
     )
 
@@ -135,7 +135,7 @@ def main():
 
     logging.info("Starting UVM regression...")
     cmd = [
-        spike,
+        model,
         "+UVM_TESTNAME=coralnpu_regression_test",
         "+UVM_VERBOSITY=UVM_LOW",
         f"+REGRESSION_LIST={batch_path}",

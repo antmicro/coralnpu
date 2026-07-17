@@ -7,8 +7,24 @@ load("@rules_cc//cc/common:cc_info.bzl", "CcInfo")
 load("@rules_hdl//verilator:defs.bzl", "verilator_cc_library")
 load("@rules_hdl//verilog:providers.bzl", "VerilogInfo", "verilog_library")
 load("@coralnpu_hw//rules:coco_tb.bzl", "verilator_make_parallelism", "verilator_resource_estimator")
-load("@coralnpu_hw//rules:coralnpu_v2.bzl", "SPIKE_DENYLIST")
 load("@bazel_skylib//rules:common_settings.bzl", "BuildSettingInfo")
+
+# List of targets to exclude from Spike co-simulation (e.g. tests requiring external IRQs)
+SPIKE_DENYLIST = [
+    "//hw_sim:mailbox_example",
+    "//tests/cocotb/exceptions:store_fault_0",
+    "//tests/cocotb/rvv:rvv_add",
+    "//tests/cocotb/rvv:rvv_load",
+    "//tests/cocotb/rvv:vstart_store",
+    "//tests/cocotb:loop",
+    "//tests/cocotb:registers",
+    "//tests/cocotb:software_interrupt_test",
+    "//tests/cocotb:stress_test",
+    "//tests/cocotb:wfi_slot_0",
+    "//tests/cocotb:wfi_slot_1",
+    "//tests/cocotb:wfi_slot_2",
+    "//tests/cocotb:wfi_slot_3",
+]
 
 def _verilator_model_impl(ctx):
     hdl_toplevel = ctx.attr.hdl_toplevel
@@ -286,8 +302,6 @@ def _verilator_batch_uvm_impl(ctx):
     if not model_binary:
         fail("Model binary could not be found")
 
-    coralnpu_elfs = [f for f in ctx.files.coralnpu_tests]
-
     spike_bin = None
     for f in ctx.files._spike:
         if f.basename == "spike":
@@ -299,7 +313,7 @@ def _verilator_batch_uvm_impl(ctx):
 
     ws = "coralnpu_hw"
     runner = ctx.actions.declare_file(ctx.label.name)
-    runfiles.extend(coralnpu_elfs + [model_binary])
+    runfiles.extend(ctx.files.coralnpu_tests + [model_binary])
     if run_spike_flag:
         runfiles.append(spike_bin)
         spike_rloc = _rlocation_path(ws, spike_bin)
@@ -308,9 +322,9 @@ def _verilator_batch_uvm_impl(ctx):
 
     ctx.actions.symlink(output = runner, target_file = ctx.executable._runner, is_executable = True)
 
-    c = []
-    for f in zip(ctx.files.coralnpu_tests, ctx.attr.timeouts):
-        c.append("{}\t{}\t{}".format((_rlocation_path(ws, f[0]), _label_str(f[0].owner), f[0])))
+    coralnpu_elfs_fmt = []
+    for f, t in zip(ctx.files.coralnpu_tests, ctx.attr.timeouts):
+        coralnpu_elfs_fmt.append("{}\t{}\t{}".format(_rlocation_path(ws, f), _label_str(f.owner), t))
 
     return [
         DefaultInfo(
@@ -323,7 +337,7 @@ def _verilator_batch_uvm_impl(ctx):
         RunEnvironmentInfo(
             environment = {
                 "UVM_MODEL_RLOCATION": _rlocation_path(ws, model_binary),
-                "UVM_CORALNPU_ELFS": "\n".join(c),
+                "UVM_CORALNPU_ELFS": "\n".join(coralnpu_elfs_fmt),
                 "UVM_SPIKE_RLOCATION": spike_rloc,
             },
         ),
@@ -335,7 +349,7 @@ verilator_batch_uvm_test = rule(
     attrs = {
         "model": attr.label(allow_files = True),
         "coralnpu_tests": attr.label_list(allow_files = True),
-        "timeouts": attr.label(allow_files = True),
+        "timeouts": attr.int_list(mandatory = True),
         "run_spike": attr.label(
             providers = [BuildSettingInfo],
         ),

@@ -139,7 +139,6 @@ ALL_BINS = [
     )
 ]
 
-# Test binaries are without extension, so copy only those files
 genrule(
     name = "all_isa_binaries",
     srcs = [":all_files"],
@@ -149,12 +148,12 @@ genrule(
         for f in $$dir/isa/*; do
           base=$$(basename $$f)
           extension="$${base##*.}"
-          if [ -z "$$extension" ]; then
-              cp $$f $(@D)/$$base.elf
+          if [[ "$${base}" != "dump" ]]; then
+              cp "$${f}" "$(@D)/$${base}.elf"
           fi
         done
       done
     """,
 )
 
-collect_coralnpu_riscv_tests()
+collect_coralnpu_riscv_tests(binaries = ALL_BINS)
