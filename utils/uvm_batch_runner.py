@@ -13,25 +13,18 @@ from __future__ import annotations
 import csv
 import logging
 import os
-import re
 import shutil
-import subprocess
 import sys
 import tempfile
-from itertools import chain
 from pathlib import Path
-from typing import IO, TypedDict
+from typing import IO, Optional, TypedDict
 
 from bazel_tools.tools.python.runfiles import runfiles
 from run_uvm_regression import (
-    DENYLIST,
-    SPIKE_DENYLIST,
-    TIMEOUT_MAP,
     format_batch_entry,
     generate_spike_log,
     get_entry_point,
     get_tohost_addr,
-    is_riscv_test_file,
     run_uvm_batch,
 )
 
@@ -43,7 +36,7 @@ class TestInfo(TypedDict):
     tohost: int
     entry: int
     timeout: int
-    spike: str
+    spike_log: str
     safe_log: str
 
 
@@ -55,21 +48,23 @@ def write_entry(
     elf_path: Path,
     log_name: str,
     label: str,
-    seen: set[Path],
+    timeout: int,
+    spike: Optional[str],
     test_info_map: TestInfoMap,
 ) -> None:
-    if elf_path in seen or label in DENYLIST:
-        return
-
-    seen.add(elf_path)
-
     entry = get_entry_point(str(elf_path))
     tohost = get_tohost_addr(str(elf_path))
     if tohost is None:
         tohost = 0xFFFFFFFF
 
-    timeout = TIMEOUT_MAP.get(label, 100000)
-    spike_log = "NONE"
+    if spike:
+        spike_log = (elf_path.parent / f"spike_log_{elf_path.name}.log").as_posix()
+        if not generate_spike_log(
+            spike, elf_path.as_posix(), spike_log, entry, timeout
+        ):
+            sys.exit(1)
+    else:
+        spike_log = "NONE"
 
     batch_file.write(
         format_batch_entry(
@@ -97,19 +92,18 @@ def label_to_fname(label: str) -> str:
 
 
 def build_batch_file(
-    batch_path: Path,
-    coralnpu_elfs: list[tuple[Path, str]],
+    batch_path: Path, coralnpu_elfs: list[tuple[Path, str, int]], spike: Optional[str]
 ) -> TestInfoMap:
-    seen: set[Path] = set()
     test_info_map: TestInfoMap = {}
     with batch_path.open("w") as batch_file:
-        for elf_path, label in coralnpu_elfs:
+        for elf_path, label, timeout in coralnpu_elfs:
             write_entry(
                 batch_file,
                 elf_path,
                 f"{label_to_fname(label)}.log",
                 label,
-                seen,
+                timeout,
+                spike,
                 test_info_map,
             )
 
@@ -121,12 +115,15 @@ def main():
     model_rloc = os.environ["UVM_MODEL_RLOCATION"]
     model = r.Rlocation(model_rloc)
     if not model or not os.path.isfile(model):
-        sys.exit("ERROR: model not found: %s" % model_rloc)
+        sys.exit(f"ERROR: model not found: {model_rloc}")
+
+    spike_rloc = os.environ["UVM_SPIKE_RLOCATION"]
+    spike = r.Rlocation(spike_rloc) if spike_rloc else None
 
     coralnpu_elfs = []
     for line in os.environ.get("UVM_CORALNPU_ELFS", "").splitlines():
-        rloc, label = line.split("\t")
-        coralnpu_elfs.append((Path(r.Rlocation(rloc)), label))
+        rloc, label, timeout = line.split("\t")
+        coralnpu_elfs.append((Path(r.Rlocation(rloc)), label, int(timeout)))
 
     results_tmp = tempfile.TemporaryDirectory()
     results_dir_path = Path(results_tmp.name)
@@ -134,11 +131,11 @@ def main():
     log_path = results_dir_path / "logs"
     log_path.mkdir()
     regression_log_path = log_path / "regression.log"
-    test_info_map = build_batch_file(batch_path, coralnpu_elfs)
+    test_info_map = build_batch_file(batch_path, coralnpu_elfs, spike)
 
     logging.info("Starting UVM regression...")
     cmd = [
-        model,
+        spike,
         "+UVM_TESTNAME=coralnpu_regression_test",
         "+UVM_VERBOSITY=UVM_LOW",
         f"+REGRESSION_LIST={batch_path}",
@@ -171,7 +168,9 @@ def main():
 
     shutil.copytree(
         results_dir_path.as_posix(),
-        (Path(os.environ.get("TEST_UNDECLARED_OUTPUTS_DIR")) / "uvm_regression_batch").as_posix(),
+        (
+            Path(os.environ.get("TEST_UNDECLARED_OUTPUTS_DIR")) / "uvm_regression_batch"
+        ).as_posix(),
     )
 
 

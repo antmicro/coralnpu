@@ -130,13 +130,16 @@ filegroup(
     output_group = "gen_dir",
 )
 
-ALL_BINS = (
-    OUT_BINARIES_RV32UI +
-    OUT_BINARIES_RV32UM +
-    OUT_BINARIES_RV32UF +
-    OUT_BINARIES_RV32UZBB
-)
+ALL_BINS = [
+    "{}.elf".format(binary) for binary in (
+        OUT_BINARIES_RV32UI +
+        OUT_BINARIES_RV32UM +
+        OUT_BINARIES_RV32UF +
+        OUT_BINARIES_RV32UZBB
+    )
+]
 
+# Test binaries are without extension, so copy only those files
 genrule(
     name = "all_isa_binaries",
     srcs = [":all_files"],
@@ -145,7 +148,10 @@ genrule(
       for dir in $(SRCS); do
         for f in $$dir/isa/*; do
           base=$$(basename $$f)
-          cp $$f $(@D)/$$base
+          extension="$${base##*.}"
+          if [ -z "$$extension" ]; then
+              cp $$f $(@D)/$$base.elf
+          fi
         done
       done
     """,

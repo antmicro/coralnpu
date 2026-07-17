@@ -18,6 +18,7 @@ load("//rules:linker.bzl", "generate_linker_script")
 
 load("@rules_cc//cc:find_cc_toolchain.bzl", "find_cc_toolchain")
 load("//rules:verilator.bzl", "verilator_batch_uvm_test")
+load("@bazel_skylib//rules:common_settings.bzl", "bool_flag")
 
 CORALNPU_V2_PLATFORM = "//platforms:coralnpu_v2"
 CORALNPU_V2_SEMIHOSTING_PLATFORM = "//platforms:coralnpu_v2_semihosting"
@@ -335,6 +336,14 @@ def coralnpu_v2_binary(
         tags = tags,
     )
 
+# Enable Spike co-simulation for UVM tests
+# specifying --//:uvm_run_spike_cosim=true
+bool_flag(
+    name = "uvm_run_spike_cosim",
+    build_setting_default = False,
+    visibility = ["//visibility:public"],
+)
+
 # List of targets to exclude from the regression
 DENYLIST = [
     # Checks mcycle
@@ -386,6 +395,39 @@ DENYLIST = [
     "//tests/cocotb/rvv/ml_ops:rvv_matmul_itcm512kb_dtcm512kb",
 ]
 
+# List of targets to exclude from Spike co-simulation (e.g. tests requiring external IRQs)
+SPIKE_DENYLIST = [
+    "//hw_sim:mailbox_example",
+    "//tests/cocotb/exceptions:store_fault_0",
+    "//tests/cocotb/rvv:rvv_add",
+    "//tests/cocotb/rvv:rvv_load",
+    "//tests/cocotb/rvv:vstart_store",
+    "//tests/cocotb:loop",
+    "//tests/cocotb:registers",
+    "//tests/cocotb:software_interrupt_test",
+    "//tests/cocotb:stress_test",
+    "//tests/cocotb:wfi_slot_0",
+    "//tests/cocotb:wfi_slot_1",
+    "//tests/cocotb:wfi_slot_2",
+    "//tests/cocotb:wfi_slot_3",
+]
+
+# Map of targets to custom timeouts (in nanoseconds)
+TIMEOUT_MAP = {
+    "//tests/cocotb:nop_test": 5000000,
+    "//tests/cocotb/rvv/ml_ops:rvv_float_matmul": 100000000,
+    "//tests/cocotb/rvv/ml_ops:rvv_matmul": 100000000,
+    "//tests/cocotb/rvv/ml_ops:rvv_matmul_assembly": 100000000,
+    "//examples:coralnpu_v2_rvv_add_intrinsic": 200000,
+}
+
+def _get_canonical_name(rule):
+    """Gets full canonical target name for rule.
+
+       Example: registers in tests/cocotb package returns "//tests/cocotb:registers"
+    """
+    return "//{}:{}".format(native.package_name(), rule["name"])
+
 def _is_uvm_test_target(rule):
     """Predicate for UVM regression test material."""
 
@@ -394,8 +436,8 @@ def _is_uvm_test_target(rule):
         return False
     if not rule.get("linker_script", "") == ":{}.ld".format(rule["name"]):
         return False
-    canonical_label = "//{}:{}".format(native.package_name(), rule["name"])
-    if canonical_label in DENYLIST:
+    canonical_label = _get_canonical_name(rule)
+    if canonical_label in DENYLIST or canonical_label.startswith("//internal/kernels"):
         return False
     return True
 
@@ -410,32 +452,30 @@ def collect_coralnpu_elfs(tags = []):
     """
     for rule in native.existing_rules().values():
         if _is_uvm_test_target(rule):
-            elf = rule["name"]
-            label_name = elf[:-len(".elf")] if elf.endswith(".elf") else elf
+            elf = "{}.elf".format(rule["name"]) if not rule["name"].endswith(".elf") else rule["name"]
+            label_name = rule["name"] 
+            canonical_label = _get_canonical_name(rule)
             verilator_batch_uvm_test(
                 name = "verilator_uvm_regression_{}".format(label_name),
                 model = "//tests/uvm:uvm_sim_verilator",
                 coralnpu_tests = [elf],
+                timeouts = [TIMEOUT_MAP.get(canonical_label, 100000)],
+                run_spike = ":uvm_run_spike_cosim",
                 tags = tags + ["verilator-uvm-regression", "verilator-uvm-regression-coralnpu-tests"],
             )
 
 
-def collect_coralnpu_riscv_tests(tags = []):
-    """Generates Verilator UVM regression tests for all `configure_make` output binaries.
+def collect_coralnpu_riscv_tests(binaries = [], tags = []):
+    """Generates Verilator UVM regression tests for all binaries in the list.
         
     Used specifically for third_party/riscv-tests.
     All tests are tagged for regression execution.
 
     Args:
+      binaries: List of binaries to test
       tags: build tags.
     """
-    elfs = set([
-        elf
-        for r in native.existing_rules().values()
-        if r["kind"] == "configure_make"
-        for elf in r.get("out_binaries", [])
-    ])
-    for elf in elfs:
+    for elf in set(binaries):
         label_name = elf[:-len(".elf")] if elf.endswith(".elf") else elf
         canonical_label = "//{}:{}".format(native.package_name(),label_name)
         if canonical_label not in DENYLIST:
@@ -443,5 +483,7 @@ def collect_coralnpu_riscv_tests(tags = []):
                 name = "verilator_uvm_regression_riscv_tests_{}".format(label_name),
                 model = "//tests/uvm:uvm_sim_verilator",
                 coralnpu_tests = [":{}".format(elf)],
+                timeouts = [TIMEOUT_MAP.get(canonical_label, 100000)],
+                run_spike = ":uvm_run_spike_cosim",
                 tags = tags + ["verilator-uvm-regression", "verilator-uvm-regression-riscv-tests"],
             )
