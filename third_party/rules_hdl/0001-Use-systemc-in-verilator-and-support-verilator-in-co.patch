@@ -118,7 +118,7 @@ index ba37573..03d0dbc 100644
  
  
 diff --git a/dependency_support/verilator/verilator.BUILD.bazel b/dependency_support/verilator/verilator.BUILD.bazel
-index f958490..741b047 100644
+index f958490..f7aef7e 100644
 --- a/dependency_support/verilator/verilator.BUILD.bazel
 +++ b/dependency_support/verilator/verilator.BUILD.bazel
 @@ -81,6 +81,47 @@ verilator_build_template(
@@ -218,7 +218,7 @@ index f958490..741b047 100644
      ],
      # TODO: Remove these once upstream fixes these warnings
      copts = [
-@@ -327,18 +373,23 @@ cc_library(
+@@ -327,18 +373,24 @@ cc_library(
          "-std=c++17",
          "-ffp-contract=off",
      ],
@@ -231,6 +231,7 @@ index f958490..741b047 100644
 +    defines = ["VM_SC"],
      linkopts = [
          "-lpthread",
++        "-llz4",
      ],
      strip_include_prefix = "include/",
      textual_hdrs = [
@@ -246,7 +247,7 @@ index f958490..741b047 100644
          "@net_zlib//:zlib",
          ":vltstd",
      ],
-@@ -349,7 +400,7 @@ cc_library(
+@@ -349,7 +401,7 @@ cc_library(
  # output name.
  alias(
      name = "libverilator",
@@ -255,7 +256,7 @@ index f958490..741b047 100644
      visibility = ["//visibility:public"],
  )
  
-@@ -376,3 +427,59 @@ cc_binary(
+@@ -376,3 +428,59 @@ cc_binary(
      visibility = ["//visibility:public"],
      deps = [":verilator_libV3"],
  )
