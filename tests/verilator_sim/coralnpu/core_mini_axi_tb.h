@@ -48,13 +48,13 @@
 
 #include "soc/interconnect/iconnect.h"
 #include "tests/verilator_sim/util.h"
-#define MODEL_HEADER_SUFFIX .h
-#define MODEL_HEADER STRINGIFY(VERILATOR_MODEL MODEL_HEADER_SUFFIX)
+#define CONCAT_HELPER(a, b) a##b
+#define CONCAT(a, b) CONCAT_HELPER(a, b)
+
+#define MODEL_HEADER STRINGIFY(VERILATOR_MODEL.h)
 #include MODEL_HEADER
 
-#define PARAMS_HEADER_PREFIX hdl/chisel/src/coralnpu/
-#define PARAMS_HEADER_SUFFIX _parameters.h
-#define PARAMS_HEADER STRINGIFY(PARAMS_HEADER_PREFIX VERILATOR_MODEL PARAMS_HEADER_SUFFIX)
+#define PARAMS_HEADER STRINGIFY(hdl/chisel/src/coralnpu/CONCAT(VERILATOR_MODEL, _parameters.h))
 #include PARAMS_HEADER
 
 struct CoreMiniAxi_tb : Sysc_tb {

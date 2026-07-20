@@ -166,7 +166,6 @@ def _verilator_model_impl(ctx):
             {include_dirs_str} \
             -LDFLAGS "-lstdc++" \
             -LDFLAGS "-lm" \
-            -CFLAGS "-std=c++20" \
             -I"{uvm_lib_path}/src" \
 	        "{uvm_lib_path}/src/uvm_pkg.sv" \
 	        "{uvm_lib_path}/src/dpi/uvm_dpi.cc" \
